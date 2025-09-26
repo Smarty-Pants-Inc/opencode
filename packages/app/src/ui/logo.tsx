@@ -19,13 +19,9 @@ export function Logo(props: LogoProps) {
         class={`text-text ${props.class ?? ""}`}
         {...others}
       >
-        <path
-          fill-rule="evenodd"
-          clip-rule="evenodd"
-          d="M0 0H32V41.5955H0V0ZM24 8.5H8V33H24V8.5Z"
-          fill="currentColor"
-        />
-        <path d="M40 0H64V8.5H48V33H64V41.5H40V0Z" fill="currentColor" />
+        <path d="M0 0H24V8.5H8V16.5H24V25H8V33H24V41.5H0V33H16V25H0V16.5H16V8.5H0V0Z" fill="currentColor" />
+        <path d="M40 0H48V41.5H40V0Z" fill="currentColor" />
+        <path d="M48 0H64V16.5H48V0Z" fill="currentColor" />
       </svg>
     )
   }
@@ -33,93 +29,79 @@ export function Logo(props: LogoProps) {
   if (variant === "full") {
     return (
       <svg
-        width={size * (289 / 42)}
+        width={size * (425 / 42)}
         height={size}
-        viewBox="0 0 289 42"
+        viewBox="0 0 425 42"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         {...others}
       >
-        <path d="M264.5 0H288.5V8.5H272.5V16.5H288.5V25H272.5V33H288.5V41.5H264.5V0Z" fill="currentColor" />
-        <path d="M248.5 0H224.5V41.5H248.5V33H232.5V8.5H248.5V0Z" fill="currentColor" />
-        <path d="M256.5 8.5H248.5V33H256.5V8.5Z" fill="currentColor" />
-        <path
-          fill-rule="evenodd"
-          clip-rule="evenodd"
-          d="M184.5 0H216.5V41.5H184.5V0ZM208.5 8.5H192.5V33H208.5V8.5Z"
-          fill="currentColor"
-        />
-        <path d="M144.5 8.5H136.5V41.5H144.5V8.5Z" fill="currentColor" />
-        <path d="M136.5 0H112.5V41.5H120.5V8.5H136.5V0Z" fill="currentColor" />
-        <path d="M80.5 0H104.5V8.5H88.5V16.5H104.5V25H88.5V33H104.5V41.5H80.5V0Z" fill="currentColor" />
-        <path
-          fill-rule="evenodd"
-          clip-rule="evenodd"
-          d="M40.5 0H72.5V41.5H48.5V49.5H40.5V0ZM64.5 8.5H48.5V33H64.5V8.5Z"
-          fill="currentColor"
-        />
-        <path
-          fill-rule="evenodd"
-          clip-rule="evenodd"
-          d="M0.5 0H32.5V41.5955H0.5V0ZM24.5 8.5H8.5V33H24.5V8.5Z"
-          fill="currentColor"
-        />
-        <path d="M152.5 0H176.5V8.5H160.5V33H176.5V41.5H152.5V0Z" fill="currentColor" />
+        <path d="M0 0H24V8.5H8V16.5H24V25H8V33H24V41.5H0V33H16V25H0V16.5H16V8.5H0V0Z" fill="currentColor" />
+        <path d="M32 0H40V41.5H32V0Z" fill="currentColor" />
+        <path d="M40 0H48V25H40V0Z" fill="currentColor" />
+        <path d="M48 0H56V25H48V0Z" fill="currentColor" />
+        <path d="M56 0H64V41.5H56V0Z" fill="currentColor" />
+        <path d="M72 16.5H80V0H96V16.5H104V25H96V41.5H80V25H72V16.5Z" fill="currentColor" />
+        <path d="M80 8.5H96V16.5H80V8.5Z" fill="currentColor" />
+        <path d="M112 0H120V41.5H112V0Z" fill="currentColor" />
+        <path d="M120 0H136V16.5H120V0Z" fill="currentColor" />
+        <path d="M120 16.5H128V25H136V41.5H144V25H136V16.5Z" fill="currentColor" />
+        <path d="M152 0H184V8.5H172V41.5H164V8.5H152V0Z" fill="currentColor" />
+        <path d="M192 0H200V16.5H204V25H212V16.5H216V0H224V16.5H212V25H204V25H200V16.5H192V0Z" fill="currentColor" />
+        <path d="M204 25H212V41.5H204V25Z" fill="currentColor" />
+        <path d="M232 0H240V41.5H232V0Z" fill="currentColor" />
+        <path d="M240 0H256V16.5H240V0Z" fill="currentColor" />
+        <path d="M272 16.5H280V0H296V16.5H304V25H296V41.5H280V25H272V16.5Z" fill="currentColor" />
+        <path d="M280 8.5H296V16.5H280V8.5Z" fill="currentColor" />
+        <path d="M312 0H320V41.5H312V0Z" fill="currentColor" />
+        <path d="M320 16.5H328V8.5H336V0H344V41.5H336V16.5H328V33H320V16.5Z" fill="currentColor" />
+        <path d="M352 0H384V8.5H372V41.5H364V8.5H352V0Z" fill="currentColor" />
+        <path d="M392 0H416V8.5H400V16.5H416V25H400V33H416V41.5H392V33H408V25H392V16.5H408V8.5H392V0Z" fill="currentColor" />
       </svg>
     )
   }
 
   return (
     <svg
-      width={size * (289 / 42)}
+      width={size * (425 / 42)}
       height={size}
-      viewBox="0 0 289 50"
+      viewBox="0 0 425 50"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       {...others}
     >
-      <path d="M8.5 16.5H24.5V33H8.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M48.5 16.5H64.5V33H48.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M120.5 16.5H136.5V33H120.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M160.5 16.5H176.5V33H160.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M192.5 16.5H208.5V33H192.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M232.5 16.5H248.5V33H232.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path
-        d="M264.5 0H288.5V8.5H272.5V16.5H288.5V25H272.5V33H288.5V41.5H264.5V0Z"
-        fill="currentColor"
-        fill-opacity="0.95"
-      />
-      <path d="M248.5 0H224.5V41.5H248.5V33H232.5V8.5H248.5V0Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M256.5 8.5H248.5V33H256.5V8.5Z" fill="currentColor" fill-opacity="0.95" />
-      <path
-        fill-rule="evenodd"
-        clip-rule="evenodd"
-        d="M184.5 0H216.5V41.5H184.5V0ZM208.5 8.5H192.5V33H208.5V8.5Z"
-        fill="currentColor"
-        fill-opacity="0.95"
-      />
-      <path d="M144.5 8.5H136.5V41.5H144.5V8.5Z" fill="currentColor" fill-opacity="0.5" />
-      <path d="M136.5 0H112.5V41.5H120.5V8.5H136.5V0Z" fill="currentColor" fill-opacity="0.5" />
-      <path
-        d="M80.5 0H104.5V8.5H88.5V16.5H104.5V25H88.5V33H104.5V41.5H80.5V0Z"
-        fill="currentColor"
-        fill-opacity="0.5"
-      />
-      <path
-        fill-rule="evenodd"
-        clip-rule="evenodd"
-        d="M40.5 0H72.5V41.5H48.5V49.5H40.5V0ZM64.5 8.5H48.5V33H64.5V8.5Z"
-        fill="currentColor"
-        fill-opacity="0.5"
-      />
-      <path
-        fill-rule="evenodd"
-        clip-rule="evenodd"
-        d="M0.5 0H32.5V41.5955H0.5V0ZM24.5 8.5H8.5V33H24.5V8.5Z"
-        fill="currentColor"
-        fill-opacity="0.5"
-      />
-      <path d="M152.5 0H176.5V8.5H160.5V33H176.5V41.5H152.5V0Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M8 16.5H24V33H8V16.5Z" fill="currentColor" fill-opacity="0.2" />
+      <path d="M40 16.5H56V33H40V16.5Z" fill="currentColor" fill-opacity="0.2" />
+      <path d="M80 16.5H96V33H80V16.5Z" fill="currentColor" fill-opacity="0.2" />
+      <path d="M120 16.5H136V33H120V16.5Z" fill="currentColor" fill-opacity="0.2" />
+      <path d="M164 16.5H172V33H164V16.5Z" fill="currentColor" fill-opacity="0.2" />
+      <path d="M204 16.5H212V33H204V16.5Z" fill="currentColor" fill-opacity="0.2" />
+      <path d="M240 16.5H256V33H240V16.5Z" fill="currentColor" fill-opacity="0.2" />
+      <path d="M280 16.5H296V33H280V16.5Z" fill="currentColor" fill-opacity="0.2" />
+      <path d="M328 16.5H336V33H328V16.5Z" fill="currentColor" fill-opacity="0.2" />
+      <path d="M364 16.5H372V33H364V16.5Z" fill="currentColor" fill-opacity="0.2" />
+      <path d="M400 16.5H408V33H400V16.5Z" fill="currentColor" fill-opacity="0.2" />
+      <path d="M0 0H24V8.5H8V16.5H24V25H8V33H24V41.5H0V33H16V25H0V16.5H16V8.5H0V0Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M32 0H40V41.5H32V0Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M40 0H48V25H40V0Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M48 0H56V25H48V0Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M56 0H64V41.5H56V0Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M72 16.5H80V0H96V16.5H104V25H96V41.5H80V25H72V16.5Z" fill="currentColor" fill-opacity="0.5" />
+      <path d="M80 8.5H96V16.5H80V8.5Z" fill="currentColor" fill-opacity="0.5" />
+      <path d="M112 0H120V41.5H112V0Z" fill="currentColor" fill-opacity="0.5" />
+      <path d="M120 0H136V16.5H120V0Z" fill="currentColor" fill-opacity="0.5" />
+      <path d="M120 16.5H128V25H136V41.5H144V25H136V16.5Z" fill="currentColor" fill-opacity="0.5" />
+      <path d="M152 0H184V8.5H172V41.5H164V8.5H152V0Z" fill="currentColor" fill-opacity="0.5" />
+      <path d="M192 0H200V16.5H204V25H212V16.5H216V0H224V16.5H212V25H204V25H200V16.5H192V0Z" fill="currentColor" fill-opacity="0.5" />
+      <path d="M204 25H212V41.5H204V25Z" fill="currentColor" fill-opacity="0.5" />
+      <path d="M232 0H240V41.5H232V0Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M240 0H256V16.5H240V0Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M272 16.5H280V0H296V16.5H304V25H296V41.5H280V25H272V16.5Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M280 8.5H296V16.5H280V8.5Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M312 0H320V41.5H312V0Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M320 16.5H328V8.5H336V0H344V41.5H336V16.5H328V33H320V16.5Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M352 0H384V8.5H372V41.5H364V8.5H352V0Z" fill="currentColor" fill-opacity="0.95" />
+      <path d="M392 0H416V8.5H400V16.5H416V25H400V33H416V41.5H392V33H408V25H392V16.5H408V8.5H392V0Z" fill="currentColor" fill-opacity="0.95" />
     </svg>
   )
 }

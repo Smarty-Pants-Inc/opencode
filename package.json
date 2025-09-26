@@ -1,11 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "opencode",
+  "name": "smartypants",
   "private": true,
   "type": "module",
   "packageManager": "bun@1.2.21",
   "scripts": {
-    "dev": "bun run --conditions=development packages/opencode/src/index.ts",
+    "dev": "bun run --conditions=development packages/smartypants/src/index.ts",
     "typecheck": "bun turbo typecheck",
     "prepare": "husky"
   },

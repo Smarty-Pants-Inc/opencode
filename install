@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-APP=opencode
+APP=smartypants
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -41,7 +41,7 @@ case "$filename" in
     ;;
 esac
 
-INSTALL_DIR=$HOME/.opencode/bin
+INSTALL_DIR=$HOME/.smartypants/bin
 mkdir -p "$INSTALL_DIR"
 
 if [ -z "$requested_version" ]; then
