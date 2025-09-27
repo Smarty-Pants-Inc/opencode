@@ -15,7 +15,7 @@ const LOG = (...args) => {
 
 async function initOtel() {
   const sdk = new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor()] })
-  await sdk.start().catch(() => {})
+  try { await Promise.resolve(sdk.start()) } catch {}
 }
 
 function eventUrl() {
