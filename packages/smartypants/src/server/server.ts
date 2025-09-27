@@ -56,7 +56,7 @@ export namespace Server {
   const __lf_sidecar_started = new Set<string>()
   async function ensureLangfuseSidecar(opts: { directory: string; port: number }) {
     const env = process.env as Record<string, string | undefined>
-    if (!env.LANGFUSE_SECRET_KEY || !env.LANGFUSE_PUBLIC_KEY) return
+    if (!((env.OPENCODE_OBSERVE ?? "").includes("langfuse"))) return
     if (__lf_sidecar_started.has(opts.directory)) return
     try {
       const script = new URL("../../../langfuse-sidecar/bin/sidecar.mjs", import.meta.url).pathname

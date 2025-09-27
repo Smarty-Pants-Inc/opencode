@@ -3,12 +3,13 @@ import { cmd } from "./cmd"
 import path from "path"
 import fs from "fs/promises"
 import { Log } from "../../util/log"
+import { UI } from "../ui"
 
 import { $ } from "bun"
 
 export const AttachCommand = cmd({
   command: "attach <server>",
-  describe: "attach to a running opencode server",
+  describe: `attach to a running ${UI.BRAND} server`,
   builder: (yargs) =>
     yargs.positional("server", {
       type: "string",
@@ -48,6 +49,7 @@ export const AttachCommand = cmd({
         ...process.env,
         CGO_ENABLED: "0",
         OPENCODE_SERVER: args.server,
+        BRAND: process.env["BRAND"] ?? "smarty",
       },
     })
 

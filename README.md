@@ -3,7 +3,7 @@
     <picture>
       <source srcset="packages/web/src/assets/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/web/src/assets/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/web/src/assets/logo-ornate-light.svg" alt="opencode logo">
+      <img src="packages/web/src/assets/logo-ornate-light.svg" alt="smartypants logo">
     </picture>
   </a>
 </p>

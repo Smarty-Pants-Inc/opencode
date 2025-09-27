@@ -142,6 +142,12 @@ try {
 
 const cancel = new AbortController()
 
+// Print logo explicitly before yargs help so leading spaces are preserved
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
+  console.log(UI.logo())
+  console.log()
+}
+
 try {
 } catch (e) {}
 
@@ -158,7 +164,7 @@ process.on("uncaughtException", (e) => {
 })
 
 const cli = yargs(hideBin(process.argv))
-  .scriptName("opencode")
+  .scriptName(UI.BRAND)
   .help("help", "show help")
   .version("version", "show version number", Installation.VERSION)
   .alias("version", "v")
@@ -189,7 +195,7 @@ const cli = yargs(hideBin(process.argv))
       args: process.argv.slice(2),
     })
   })
-  .usage("\n" + UI.logo())
+  .usage("")
   .command(McpCommand)
   .command(TuiCommand)
   .command(AttachCommand)
@@ -210,6 +216,7 @@ const cli = yargs(hideBin(process.argv))
       msg.startsWith("Not enough non-option arguments") ||
       msg.startsWith("Invalid values:")
     ) {
+      console.error(UI.logo())
       cli.showHelp("log")
     }
     process.exit(1)
