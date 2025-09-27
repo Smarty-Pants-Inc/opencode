@@ -23,7 +23,7 @@ import { AttachCommand } from "./cli/cmd/attach"
 // Langfuse integration (v4 via Node OTel only)
 try {
   const env = process.env as Record<string, string | undefined>
-  if (env.LANGFUSE_SECRET_KEY && env.LANGFUSE_PUBLIC_KEY && typeof (globalThis as any).Bun === "undefined") {
+  if ((env.OPENCODE_OBSERVE ?? "").includes("langfuse-app") && env.LANGFUSE_SECRET_KEY && env.LANGFUSE_PUBLIC_KEY && typeof (globalThis as any).Bun === "undefined") {
     let initialized = false
     try {
       const { NodeSDK } = await import("@opentelemetry/sdk-node")
