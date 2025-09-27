@@ -7,7 +7,6 @@
         "@langfuse/otel": "4.2.0",
         "@langfuse/tracing": "4.2.0",
         "@opentelemetry/sdk-node": "0.205.0",
-        "langfuse": "3.38.5",
       },
       "devDependencies": {
         "husky": "9.1.7",
