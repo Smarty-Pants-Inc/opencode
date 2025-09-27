@@ -1028,8 +1028,6 @@ func (a Model) home() (string, int, int) {
 		editorView,
 		styles.WhitespaceStyle(t.Background()),
 	)
-	lines = append(lines, editorView)
-
 	editorLines := a.editor.Lines()
 
 	mainLayout := lipgloss.Place(
@@ -1044,23 +1042,23 @@ func (a Model) home() (string, int, int) {
 	editorX := max(0, (effectiveWidth-editorWidth)/2)
 	editorY := (a.height / 2) + (mainHeight / 2) - 3
 	editorYDelta := 3
-
 	if editorLines > 1 {
 		editorYDelta = 2
-		content := a.editor.Content()
-		editorHeight := lipgloss.Height(content)
-
-		if editorY+editorHeight > a.height {
-			difference := (editorY + editorHeight) - a.height
-			editorY -= difference
-		}
-		mainLayout = layout.PlaceOverlay(
-			editorX,
-			editorY,
-			content,
-			mainLayout,
-		)
 	}
+
+	content := a.editor.Content()
+	editorHeight := lipgloss.Height(content)
+
+	if editorY+editorHeight > a.height {
+		difference := (editorY + editorHeight) - a.height
+		editorY -= difference
+	}
+	mainLayout = layout.PlaceOverlay(
+		editorX,
+		editorY,
+		content,
+		mainLayout,
+	)
 
 	if a.showCompletionDialog {
 		a.completions.SetWidth(editorWidth)
