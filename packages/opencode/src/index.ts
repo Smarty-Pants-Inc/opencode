@@ -143,6 +143,32 @@ try {
           } catch {}
         })
 
+        // Wrap global fetch to instrument outgoing HTTP requests (exclude Langfuse)
+        try {
+          const originalFetch = globalThis.fetch
+          globalThis.fetch = (async (...args: any[]) => {
+            const input = args[0]
+            const init = args[1] || {}
+            const url = typeof input === "string" ? input : input?.url
+            if (typeof url === "string" && url.includes("langfuse")) {
+              return await (originalFetch as any)(...args)
+            }
+            const trace = getTrace()
+            const s = trace.span({ name: "http.request", metadata: { url } })
+            try {
+              s.event({ name: "request", input: { method: init?.method || (typeof input !== "string" ? input?.method : undefined) } })
+              const res = await (originalFetch as any)(...args)
+              s.event({ name: "response", input: { status: res?.status } })
+              s.end()
+              return res
+            } catch (e) {
+              s.event({ name: "error", input: { error: String(e) } })
+              s.end()
+              throw e
+            }
+          }) as any
+        } catch {}
+
         const flush = async () => { try { await lf.flushAsync() } catch {} }
         process.on("beforeExit", flush)
         process.on("exit", flush)
