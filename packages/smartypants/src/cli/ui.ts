@@ -17,6 +17,8 @@ export namespace UI {
 
   export const CancelledError = NamedError.create("UICancelledError", z.void())
 
+  export const BRAND = process.env["BRAND"] ?? "smarty"
+
   export const Style = {
     TEXT_HIGHLIGHT: "\x1b[96m",
     TEXT_HIGHLIGHT_BOLD: "\x1b[96m\x1b[1m",

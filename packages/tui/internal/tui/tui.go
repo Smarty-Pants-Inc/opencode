@@ -457,8 +457,12 @@ func (a Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case dialog.CompletionDialogCloseMsg:
 		a.showCompletionDialog = false
 	case opencode.EventListResponseEventInstallationUpdated:
+		brand := os.Getenv("BRAND")
+		if brand == "" {
+			brand = "smarty"
+		}
 		return a, toast.NewSuccessToast(
-			"opencode updated to "+msg.Properties.Version+", restart to apply.",
+			brand+" updated to "+msg.Properties.Version+", restart to apply.",
 			toast.WithTitle("New version installed"),
 		)
 		/*
