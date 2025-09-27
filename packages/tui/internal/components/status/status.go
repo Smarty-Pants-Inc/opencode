@@ -67,11 +67,14 @@ func (m *statusComponent) logo() string {
 		Bold(true).
 		Render
 
-	open := base("open")
-	code := emphasis("code")
+	brandName := os.Getenv("BRAND")
+	if brandName == "" {
+		brandName = "smarty"
+	}
+	brand := emphasis(strings.ToLower(brandName))
 	version := base(" " + m.app.Version)
 
-	content := open + code
+	content := brand
 	if m.width > 40 {
 		content += version
 	}

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@opencode-ai/sdk",
+  "name": "@smartypants-ai/sdk",
   "version": "0.11.4",
   "type": "module",
   "scripts": {
