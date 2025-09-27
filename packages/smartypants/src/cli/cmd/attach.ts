@@ -3,6 +3,7 @@ import { cmd } from "./cmd"
 import path from "path"
 import fs from "fs/promises"
 import { Log } from "../../util/log"
+import { UI } from "../ui"
 
 import { $ } from "bun"
 
