@@ -61,11 +61,29 @@ const stepObs = new Map() // stepID -> obs
 const toolObs = new Map() // callID -> obs
 const pending = new Map() // messageID -> { tokens, cost, finished }
 
+// New: maintain session root, and per-part aggregation state
+const rootBySession = new Map() // sessionID -> root obs (span)
+const partTextLen = new Map() // partID -> last observed text length
+const reasoningObsByPart = new Map() // partID -> obs (span)
+const reasoningPartsByMessage = new Map() // messageID -> Set(partID)
+
+function ensureSessionRoot(sessionID) {
+  let root = rootBySession.get(sessionID)
+  if (root) return root
+  root = startObservation("session", { metadata: { sessionID } }, { asType: "span" })
+  try {
+    root.updateTrace({ sessionId: sessionID })
+  } catch {}
+  rootBySession.set(sessionID, root)
+  return root
+}
+
 function ensureGenerationForMessage(messageID, sessionID, meta) {
   let g = genByMsg.get(messageID)
   if (g) return g
   const inputText = userBySession.get(sessionID)?.text
-  const obs = startObservation(
+  const parent = ensureSessionRoot(sessionID)
+  const obs = parent.startObservation(
     "assistant",
     { input: inputText ? { text: sanitizeText(inputText) } : undefined, metadata: { messageID, ...meta } },
     { asType: "generation" },
@@ -83,6 +101,22 @@ async function maybeFinalize(messageID, reason) {
   const st = pending.get(messageID)
   if (!g || !st?.finished) return
   try {
+    // End any open reasoning spans for this message
+    const partIDs = reasoningPartsByMessage.get(messageID)
+    if (partIDs) {
+      for (const pid of partIDs) {
+        const ro = reasoningObsByPart.get(pid)
+        if (ro) {
+          try {
+            ro.end()
+          } catch {}
+          reasoningObsByPart.delete(pid)
+        }
+        partTextLen.delete(pid)
+      }
+      reasoningPartsByMessage.delete(messageID)
+    }
+
     g.obs.update({
       output: sanitizeText(g.out || ""),
       usageDetails: {
@@ -190,40 +224,58 @@ async function handle(ev) {
       return
     }
 
-    if (part.type === "text" || part.type === "text-start" || part.type === "text-delta" || part.type === "text-end") {
+    if (part.type === "text") {
       // Accumulate into user or assistant generation
       if (sid) {
         const u = userBySession.get(sid)
         if (u && u.messageID === part.messageID) {
-          u.text = (u.text || "") + String(part.text || "")
+          // user messages are not streamed; still, guard against duplicates by using per-part length
+          const prev = partTextLen.get(part.id) || 0
+          const txt = String(part.text || "")
+          u.text = (u.text || "") + txt.slice(prev)
           userBySession.set(sid, u)
+          partTextLen.set(part.id, txt.length)
         }
       }
       const g = genByMsg.get(part.messageID)
       if (g) {
-        g.out = (g.out || "") + String(part.text || "")
-        try {
-          const s = g.obs.startObservation(
-            "text",
-            { input: { text: sanitizeText(part.text) }, metadata: { messageID: part.messageID } },
-            { asType: "event" },
-          )
-          s.end()
-        } catch {}
+        const prev = partTextLen.get(part.id) || 0
+        const txt = String(part.text || "")
+        const delta = txt.slice(prev)
+        if (delta) {
+          g.out = (g.out || "") + delta
+          partTextLen.set(part.id, txt.length)
+          try {
+            const s = g.obs.startObservation(
+              "text",
+              { input: { text: sanitizeText(delta) }, metadata: { messageID: part.messageID, partID: part.id } },
+              { asType: "event" },
+            )
+            s.end()
+          } catch {}
+        }
       }
       return
     }
 
-    if (part.type === "reasoning" || part.type === "reasoning-delta" || part.type === "reasoning-end") {
+    if (part.type === "reasoning") {
       const g = genByMsg.get(part.messageID)
       if (g) {
-        try {
-          const s = g.obs.startObservation(
+        let s = reasoningObsByPart.get(part.id)
+        if (!s) {
+          s = g.obs.startObservation(
             "reasoning",
-            { input: { text: sanitizeText(part.text) }, metadata: { ...part.metadata, messageID: part.messageID } },
-            { asType: "event" },
+            { metadata: { ...part.metadata, messageID: part.messageID, partID: part.id } },
+            { asType: "span" },
           )
-          s.end()
+          reasoningObsByPart.set(part.id, s)
+          const set = reasoningPartsByMessage.get(part.messageID) || new Set()
+          set.add(part.id)
+          reasoningPartsByMessage.set(part.messageID, set)
+        }
+        // Update span output with full accumulated text to ensure visibility
+        try {
+          s.update({ output: sanitizeText(part.text) })
         } catch {}
       }
       return
