@@ -1114,6 +1114,13 @@ export namespace SessionPrompt {
                 },
               ).toObject()
               break
+            case input.abort.aborted || (e instanceof Error && e.message?.includes("was provided without its required following item")):
+              // Treat user-initiated interrupt and interrupted OpenAI streaming as a clean abort
+              assistantMsg.error = new MessageV2.AbortedError(
+                { message: "Request was aborted" },
+                { cause: e },
+              ).toObject()
+              break
             case MessageV2.OutputLengthError.isInstance(e):
               assistantMsg.error = e
               break
@@ -1140,16 +1147,18 @@ export namespace SessionPrompt {
         const p = await Session.getParts(assistantMsg.id)
         for (const part of p) {
           if (part.type === "tool" && part.state.status !== "completed" && part.state.status !== "error") {
+            const existingInput = part.state.status === "running" ? part.state.input : {}
+            const startTime = part.state.status === "running" ? part.state.time.start : Date.now()
             Session.updatePart({
               ...part,
               state: {
                 status: "error",
                 error: "Tool execution aborted",
                 time: {
-                  start: Date.now(),
+                  start: startTime,
                   end: Date.now(),
                 },
-                input: {},
+                input: existingInput,
               },
             })
           }
