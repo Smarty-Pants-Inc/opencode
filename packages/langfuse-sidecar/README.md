@@ -5,13 +5,16 @@ This package implements a sidecar process that bridges OpenCode's event stream t
 ## Architecture
 
 ### Sidecar-Only Approach
+
 We've moved from in-process instrumentation to a dedicated sidecar process that:
+
 - Connects to OpenCode's SSE event stream (`/event` endpoint)
 - Aggregates streaming events into coherent Langfuse observations
 - Sends traces to Langfuse v4 using the OpenTelemetry SDK
 - Logs canonical trace URLs for easy access
 
 ### Why Sidecar?
+
 1. **Clean separation**: Observability doesn't pollute the main app
 2. **Streaming support**: Properly aggregates text-delta/reasoning-delta events
 3. **Resilient**: Crashes don't affect the main server
@@ -20,6 +23,7 @@ We've moved from in-process instrumentation to a dedicated sidecar process that:
 ## Implementation Details
 
 ### Event Mapping
+
 The sidecar listens for these OpenCode events and maps them:
 
 ```
@@ -35,6 +39,7 @@ message.updated:
 ```
 
 ### Key Features
+
 1. **Auto-start**: Server spawns sidecar when `OPENCODE_OBSERVE=langfuse` is set
 2. **Trace URLs**: Logs US region URLs on generation finalization
 3. **Input/Output**: Captures user prompt as input, assistant response as output
@@ -42,14 +47,16 @@ message.updated:
 5. **Usage tracking**: Maps OpenCode's token counts to Langfuse's usageDetails
 
 ### Environment Variables
+
 - `OPENCODE_OBSERVE=langfuse` - Enables the sidecar
 - `LANGFUSE_PUBLIC_KEY` - Your Langfuse public key
-- `LANGFUSE_SECRET_KEY` - Your Langfuse secret key  
+- `LANGFUSE_SECRET_KEY` - Your Langfuse secret key
 - `LANGFUSE_BASE_URL` - Langfuse API URL (e.g., https://us.cloud.langfuse.com)
 
 ## Current Status
 
 ### What's Working
+
 - ✅ Sidecar auto-starts from server
 - ✅ Basic GENERATION observations with input/output
 - ✅ Nested TOOL observations
@@ -74,18 +81,21 @@ message.updated:
 ## Development
 
 ### Running Locally
+
 ```bash
 cd .worktrees/opencode-langfuse
 OPENCODE_OBSERVE=langfuse bun run --conditions=development packages/smartypants/src/index.ts serve -p 6140
 ```
 
 ### Testing
+
 1. Create a session: `POST /session`
 2. Send message: `POST /session/{id}/message` with `{"parts":[{"type":"text","text":"What is 2+2?"}]}`
 3. Check logs for "generation finalized" with trace URL
 4. Open URL in Langfuse to inspect trace
 
 ### Debugging
+
 - Set `LF_SIDECAR_LOG=1` for verbose sidecar logs
 - Check server logs for sidecar start/crash messages
 - Trace IDs in logs can be searched in Langfuse UI
@@ -93,12 +103,14 @@ OPENCODE_OBSERVE=langfuse bun run --conditions=development packages/smartypants/
 ## Files Modified
 
 ### In this worktree
+
 - `packages/langfuse-sidecar/` - The sidecar implementation
 - `packages/smartypants/src/server/server.ts` - Auto-start logic
 - `packages/smartypants/src/index.ts` - Disabled in-app tracing (gated behind langfuse-app)
 - `packages/web/package.json` - Fixed workspace reference
 
 ### Key Changes from OpenCode
+
 1. Added sidecar package outside main app
 2. Server spawns Node.js sidecar on startup
 3. In-app Langfuse disabled by default (opt-in with OPENCODE_OBSERVE=langfuse-app)

@@ -23,7 +23,9 @@ function sanitizeFileUrl(u) {
 }
 
 const env = process.env
-const eventUrl = env.OPENCODE_EVENT_URL || (env.OPENCODE_SERVER_PORT ? `http://127.0.0.1:${env.OPENCODE_SERVER_PORT}/event` : undefined)
+const eventUrl =
+  env.OPENCODE_EVENT_URL ||
+  (env.OPENCODE_SERVER_PORT ? `http://127.0.0.1:${env.OPENCODE_SERVER_PORT}/event` : undefined)
 if (!eventUrl) {
   console.error("[lf-sidecar] OPENCODE_EVENT_URL not set")
   process.exit(1)
@@ -31,7 +33,9 @@ if (!eventUrl) {
 if (!env.OTEL_SERVICE_NAME) env.OTEL_SERVICE_NAME = "opencode-sidecar"
 
 const sdk = new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor()] })
-try { await sdk.start() } catch {}
+try {
+  await sdk.start()
+} catch {}
 
 const lf = new LangfuseClient({
   baseUrl: env.LANGFUSE_BASE_URL,
@@ -66,7 +70,9 @@ function ensureGenerationForMessage(messageID, sessionID, meta) {
     { input: inputText ? { text: sanitizeText(inputText) } : undefined, metadata: { messageID, ...meta } },
     { asType: "generation" },
   )
-  try { obs.updateTrace({ sessionId: sessionID }) } catch {}
+  try {
+    obs.updateTrace({ sessionId: sessionID })
+  } catch {}
   g = { obs, out: "", providerID: meta?.providerID, modelID: meta?.modelID }
   genByMsg.set(messageID, g)
   return g
@@ -91,7 +97,9 @@ async function maybeFinalize(messageID, reason) {
     g.obs.end()
     const traceId = g.obs.traceId
     let url
-    try { if (traceId) url = await lf.getTraceUrl(traceId) } catch {}
+    try {
+      if (traceId) url = await lf.getTraceUrl(traceId)
+    } catch {}
     await log("info", "generation finalized", { messageID, traceId, url, reason })
   } catch (e) {
     await log("error", "finalize failed", { messageID, error: String(e) })
@@ -121,7 +129,10 @@ async function handle(ev) {
       // Close step (if any) and store tokens/cost; generation will be finalized on message.updated
       const s = stepObs.get(part.id)
       if (s) {
-        try { s.update({ metadata: { tokens: part.tokens, cost: part.cost } }); s.end() } catch {}
+        try {
+          s.update({ metadata: { tokens: part.tokens, cost: part.cost } })
+          s.end()
+        } catch {}
         stepObs.delete(part.id)
       }
       const st = pending.get(part.messageID) || {}
@@ -136,19 +147,43 @@ async function handle(ev) {
       const g = genByMsg.get(part.messageID)
       const parent = g?.obs
       if (part.state.status === "pending" || part.state.status === "running") {
-        const s = (parent ? parent.startObservation(`tool:${part.tool}`, { input: part.state.input, metadata: { callID: part.callID } }, { asType: "tool" }) : startObservation(`tool:${part.tool}`, { input: part.state.input, metadata: { callID: part.callID } }, { asType: "tool" }))
+        const s = parent
+          ? parent.startObservation(
+              `tool:${part.tool}`,
+              { input: part.state.input, metadata: { callID: part.callID } },
+              { asType: "tool" },
+            )
+          : startObservation(
+              `tool:${part.tool}`,
+              { input: part.state.input, metadata: { callID: part.callID } },
+              { asType: "tool" },
+            )
         toolObs.set(part.callID, s)
         return
       }
       if (part.state.status === "completed") {
-        const s = toolObs.get(part.callID) || (parent ? parent.startObservation(`tool:${part.tool}`, {}, { asType: "tool" }) : startObservation(`tool:${part.tool}`, {}, { asType: "tool" }))
-        try { s.update({ input: part.state.input, output: part.state.output, metadata: part.metadata }); s.end() } catch {}
+        const s =
+          toolObs.get(part.callID) ||
+          (parent
+            ? parent.startObservation(`tool:${part.tool}`, {}, { asType: "tool" })
+            : startObservation(`tool:${part.tool}`, {}, { asType: "tool" }))
+        try {
+          s.update({ input: part.state.input, output: part.state.output, metadata: part.metadata })
+          s.end()
+        } catch {}
         toolObs.delete(part.callID)
         return
       }
       if (part.state.status === "error") {
-        const s = toolObs.get(part.callID) || (parent ? parent.startObservation(`tool:${part.tool}`, {}, { asType: "tool" }) : startObservation(`tool:${part.tool}`, {}, { asType: "tool" }))
-        try { s.update({ input: part.state.input, output: { error: part.state.error }, metadata: part.metadata }); s.end() } catch {}
+        const s =
+          toolObs.get(part.callID) ||
+          (parent
+            ? parent.startObservation(`tool:${part.tool}`, {}, { asType: "tool" })
+            : startObservation(`tool:${part.tool}`, {}, { asType: "tool" }))
+        try {
+          s.update({ input: part.state.input, output: { error: part.state.error }, metadata: part.metadata })
+          s.end()
+        } catch {}
         toolObs.delete(part.callID)
         return
       }
@@ -167,20 +202,48 @@ async function handle(ev) {
       const g = genByMsg.get(part.messageID)
       if (g) {
         g.out = (g.out || "") + String(part.text || "")
-        try { const s = g.obs.startObservation("text", { input: { text: sanitizeText(part.text) }, metadata: { messageID: part.messageID } }, { asType: "event" }); s.end() } catch {}
+        try {
+          const s = g.obs.startObservation(
+            "text",
+            { input: { text: sanitizeText(part.text) }, metadata: { messageID: part.messageID } },
+            { asType: "event" },
+          )
+          s.end()
+        } catch {}
       }
       return
     }
 
     if (part.type === "reasoning" || part.type === "reasoning-delta" || part.type === "reasoning-end") {
       const g = genByMsg.get(part.messageID)
-      if (g) { try { const s = g.obs.startObservation("reasoning", { input: { text: sanitizeText(part.text) }, metadata: { ...part.metadata, messageID: part.messageID } }, { asType: "event" }); s.end() } catch {} }
+      if (g) {
+        try {
+          const s = g.obs.startObservation(
+            "reasoning",
+            { input: { text: sanitizeText(part.text) }, metadata: { ...part.metadata, messageID: part.messageID } },
+            { asType: "event" },
+          )
+          s.end()
+        } catch {}
+      }
       return
     }
 
     if (part.type === "file") {
       const g = genByMsg.get(part.messageID)
-      if (g) { try { const s = g.obs.startObservation("file", { input: { mime: part.mime, filename: part.filename, url: sanitizeFileUrl(part.url) }, metadata: { messageID: part.messageID } }, { asType: "event" }); s.end() } catch {} }
+      if (g) {
+        try {
+          const s = g.obs.startObservation(
+            "file",
+            {
+              input: { mime: part.mime, filename: part.filename, url: sanitizeFileUrl(part.url) },
+              metadata: { messageID: part.messageID },
+            },
+            { asType: "event" },
+          )
+          s.end()
+        } catch {}
+      }
       return
     }
 
@@ -190,7 +253,10 @@ async function handle(ev) {
   if (t === "message.updated" && p?.info) {
     const info = p.info
     if (info.role === "assistant") {
-      const g = ensureGenerationForMessage(info.id, info.sessionID, { providerID: info.providerID, modelID: info.modelID })
+      const g = ensureGenerationForMessage(info.id, info.sessionID, {
+        providerID: info.providerID,
+        modelID: info.modelID,
+      })
       g.providerID = info.providerID
       g.modelID = info.modelID
       await maybeFinalize(info.id, "message.updated")
@@ -220,12 +286,23 @@ async function connectSSE(url) {
       const raw = buf.slice(0, idx)
       buf = buf.slice(idx + 2)
       const lines = raw.split(/\r?\n/)
-      const data = lines.filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trimStart()).join("\n")
+      const data = lines
+        .filter((l) => l.startsWith("data:"))
+        .map((l) => l.slice(5).trimStart())
+        .join("\n")
       if (!data) continue
-      try { const ev = JSON.parse(data); await handle(ev) } catch {}
+      try {
+        const ev = JSON.parse(data)
+        await handle(ev)
+      } catch {}
     }
   }
 }
 
 await log("info", "sidecar starting", { eventUrl })
-try { await connectSSE(eventUrl) } catch (e) { await log("error", "sidecar crashed", { error: String(e) }); process.exit(1) }
+try {
+  await connectSSE(eventUrl)
+} catch (e) {
+  await log("error", "sidecar crashed", { error: String(e) })
+  process.exit(1)
+}
