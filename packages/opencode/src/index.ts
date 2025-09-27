@@ -30,16 +30,122 @@ try {
         const { Bus } = await import("./bus")
         const { Langfuse } = await import("langfuse")
         const lf = new Langfuse({ publicKey: env.LANGFUSE_PUBLIC_KEY!, secretKey: env.LANGFUSE_SECRET_KEY!, baseUrl: env.LANGFUSE_BASE_URL })
+
+        const traces = new Map<string, any>()
+        const stepSpans = new Map<string, any>() // key: part.id
+        const toolSpans = new Map<string, any>() // key: callID
+        const messageSpans = new Map<string, any>() // key: messageID
+
+        function getTrace(sessionID?: string) {
+          if (sessionID) {
+            const sid = String(sessionID)
+            let t = traces.get(sid)
+            if (!t) {
+              t = lf.trace({ name: "opencode:session", sessionId: sid })
+              traces.set(sid, t)
+            }
+            return t
+          }
+          return lf.trace({ name: "opencode:orphan" })
+        }
+
         Bus.subscribeAll((evt: any) => {
-          const sid = evt?.properties?.info?.id ?? evt?.properties?.sessionID
-          const trace = lf.trace({ name: `opencode:${evt.type}` as string, sessionId: sid ? String(sid) : undefined, metadata: { event: evt.type } as any, input: evt.properties as any })
-          const span = trace.span({ name: "event" })
-          span.event({ name: "data", input: evt.properties as any })
-          span.end()
+          try {
+            const sid = evt?.properties?.info?.id ?? evt?.properties?.sessionID
+            const trace = getTrace(sid)
+            const t = evt.type as string
+            const p = evt.properties as any
+
+            if (t === "message.part.updated" && p?.part) {
+              const part = p.part as any
+              if (part.type === "step-start") {
+                const s = trace.span({ name: "step", metadata: { messageID: part.messageID } })
+                stepSpans.set(part.id, s)
+                return
+              }
+              if (part.type === "step-finish") {
+                const s = stepSpans.get(part.id) ?? trace.span({ name: "step" })
+                s.event({ name: "finish", input: { tokens: part.tokens, cost: part.cost } })
+                s.end()
+                stepSpans.delete(part.id)
+                return
+              }
+              if (part.type === "tool") {
+                if (part.state.status === "pending" || part.state.status === "running") {
+                  const s = trace.span({ name: `tool:${part.tool}`, input: part.state.input, metadata: { callID: part.callID } })
+                  toolSpans.set(part.callID, s)
+                  return
+                }
+                if (part.state.status === "completed") {
+                  const s = toolSpans.get(part.callID) ?? trace.span({ name: `tool:${part.tool}` })
+                  s.event({ name: "result", input: { input: part.state.input, output: part.state.output, meta: part.metadata } })
+                  s.end()
+                  toolSpans.delete(part.callID)
+                  return
+                }
+                if (part.state.status === "error") {
+                  const s = toolSpans.get(part.callID) ?? trace.span({ name: `tool:${part.tool}` })
+                  s.event({ name: "error", input: { input: part.state.input, error: part.state.error, meta: part.metadata } })
+                  s.end()
+                  toolSpans.delete(part.callID)
+                  return
+                }
+              }
+              if (part.type === "text") {
+                const s = trace.span({ name: "text", metadata: { messageID: part.messageID } })
+                s.event({ name: "chunk", input: { text: part.text } })
+                s.end()
+                return
+              }
+              if (part.type === "reasoning") {
+                const s = trace.span({ name: "reasoning", metadata: { messageID: part.messageID } })
+                s.event({ name: "chunk", input: { text: part.text, meta: part.metadata } })
+                s.end()
+                return
+              }
+              if (part.type === "file") {
+                const s = trace.span({ name: "file", metadata: { messageID: part.messageID } })
+                s.event({ name: "attached", input: { mime: part.mime, filename: part.filename, url: part.url } })
+                s.end()
+                return
+              }
+              // snapshot, patch, agent
+              const s = trace.span({ name: part.type, metadata: { messageID: part.messageID } })
+              s.event({ name: "data", input: part })
+              s.end()
+              return
+            }
+
+            if (t === "message.updated" && p?.info) {
+              const info = p.info as any
+              const key = info.id
+              if (info.role === "assistant") {
+                const s = trace.span({ name: "assistant", metadata: { providerID: info.providerID, modelID: info.modelID } })
+                s.event({ name: "tokens", input: info.tokens })
+                s.event({ name: "cost", input: info.cost })
+                s.end()
+                messageSpans.set(key, s)
+                return
+              }
+              if (info.role === "user") {
+                const s = trace.span({ name: "user" })
+                s.event({ name: "created", input: { time: info.time?.created } })
+                s.end()
+                messageSpans.set(key, s)
+                return
+              }
+            }
+
+            // default: record generic event
+            const s = trace.span({ name: t })
+            s.event({ name: "data", input: p })
+            s.end()
+          } catch {}
         })
-        process.on("beforeExit", async () => {
-          try { await lf.flushAsync() } catch {}
-        })
+
+        const flush = async () => { try { await lf.flushAsync() } catch {} }
+        process.on("beforeExit", flush)
+        process.on("exit", flush)
       } catch {}
     } else {
       let initialized = false
