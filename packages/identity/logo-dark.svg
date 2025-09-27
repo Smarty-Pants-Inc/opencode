@@ -1,24 +1,29 @@
-<svg width="425" height="42" viewBox="0 0 425 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M0 0H24V8.5H8V16.5H24V25H8V33H24V41.5H0V33H16V25H0V16.5H16V8.5H0V0Z" fill="white"/>
-<path d="M32 0H40V41.5H32V0Z" fill="white"/>
-<path d="M40 0H48V25H40V0Z" fill="white"/>
-<path d="M48 0H56V25H48V0Z" fill="white"/>
-<path d="M56 0H64V41.5H56V0Z" fill="white"/>
-<path d="M72 16.5H80V0H96V16.5H104V25H96V41.5H80V25H72V16.5Z" fill="white"/>
-<path d="M80 8.5H96V16.5H80V8.5Z" fill="white"/>
-<path d="M112 0H120V41.5H112V0Z" fill="white"/>
-<path d="M120 0H136V16.5H120V0Z" fill="white"/>
-<path d="M120 16.5H128V25H136V41.5H144V25H136V16.5Z" fill="white"/>
-<path d="M152 0H184V8.5H172V41.5H164V8.5H152V0Z" fill="white"/>
-<path d="M192 0H200V16.5H204V25H212V16.5H216V0H224V16.5H212V25H204V25H200V16.5H192V0Z" fill="white"/>
-<path d="M204 25H212V41.5H204V25Z" fill="white"/>
-<path d="M232 0H240V41.5H232V0Z" fill="white"/>
-<path d="M240 0H256V16.5H240V0Z" fill="white"/>
-<path d="M272 16.5H280V0H296V16.5H304V25H296V41.5H280V25H272V16.5Z" fill="white"/>
-<path d="M280 8.5H296V16.5H280V8.5Z" fill="white"/>
-<path d="M312 0H320V41.5H312V0Z" fill="white"/>
-<path d="M320 16.5H328V8.5H336V0H344V41.5H336V16.5H328V33H320V16.5Z" fill="white"/>
-<path d="M352 0H384V8.5H372V41.5H364V8.5H352V0Z" fill="white"/>
-<path d="M392 0H416V8.5H400V16.5H416V25H400V33H416V41.5H392V33H408V25H392V16.5H408V8.5H392V0Z" fill="white"/>
+<svg width="600" height="180" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="monoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#ffffff" />
+            <stop offset="100%" style="stop-color:#ffffff" />
+        </linearGradient>
+        <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+    </defs>
+    
+    <text x="10" y="30" font-family="monospace" font-size="12" font-weight="bold" fill="url(#monoGradient)" filter="url(#glow)" xml:space="preserve">
+        <tspan x="10" dy="0">                                         888             </tspan>
+        <tspan x="10" dy="14">                                         888             </tspan>
+        <tspan x="10" dy="14">                                         888             </tspan>
+        <tspan x="10" dy="14"> .d8888b  88888b.d88b.   8888b.  888d888 888888 888  888 </tspan>
+        <tspan x="10" dy="14"> 88K      888 "888 "88b     "88b 888P"   888    888  888 </tspan>
+        <tspan x="10" dy="14"> "Y8888b. 888  888  888 .d888888 888     888    888  888 </tspan>
+        <tspan x="10" dy="14">      X88 888  888  888 888  888 888     Y88b.  Y88b 888 </tspan>
+        <tspan x="10" dy="14">  88888P' 888  888  888 "Y888888 888      "Y888  "Y88888 </tspan>
+        <tspan x="10" dy="14">                                                     888 </tspan>
+        <tspan x="10" dy="14">                                                Y8b d88P </tspan>
+        <tspan x="10" dy="14">                                                 "Y88P"  </tspan>
+    </text>
 </svg>
-

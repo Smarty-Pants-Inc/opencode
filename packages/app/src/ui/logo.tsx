@@ -1,107 +1,145 @@
 import type { ComponentProps } from "solid-js"
 
+// ASCII art generated using: https://patorjk.com/software/taag/
+
 export interface LogoProps extends ComponentProps<"svg"> {
   variant?: "mark" | "full" | "ornate"
   size?: number
+  theme?: "rainbow" | "mono"
 }
 
+// ASCII art definitions
+const ASCII_ART = {
+  mark: [
+    "                    ",
+    " .d8888b  888888b. ",
+    " 88K      888   888",
+    " \"Y8888b. 888888P\" ",
+    "      X88 888      ",
+    "  88888P' 888      "
+  ],
+  full: [
+    "                                         888             ",
+    "                                         888             ",
+    "                                         888             ",
+    " .d8888b  88888b.d88b.   8888b.  888d888 888888 888  888 ",
+    " 88K      888 \"888 \"88b     \"88b 888P\"   888    888  888 ",
+    " \"Y8888b. 888  888  888 .d888888 888     888    888  888 ",
+    "      X88 888  888  888 888  888 888     Y88b.  Y88b 888 ",
+    "  88888P' 888  888  888 \"Y888888 888      \"Y888  \"Y88888 ",
+    "                                                     888 ",
+    "                                                Y8b d88P ",
+    "                                                 \"Y88P\"  "
+  ]
+}
+
+// Reusable gradient definitions
+const createGradientDefs = (glowIntensity: number = 1) => (
+  <defs>
+    <linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ff0000" />
+      <stop offset="16.66%" style="stop-color:#ff8000" />
+      <stop offset="33.33%" style="stop-color:#ffff00" />
+      <stop offset="50%" style="stop-color:#00ff00" />
+      <stop offset="66.66%" style="stop-color:#0080ff" />
+      <stop offset="83.33%" style="stop-color:#8000ff" />
+      <stop offset="100%" style="stop-color:#ff0080" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation={glowIntensity} result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+)
+
+// Reusable ASCII text component
+const AsciiText = (props: {
+  lines: string[]
+  x: number
+  y: number
+  fontSize: number
+  lineHeight: number
+  fill: string
+  filter?: string
+}) => (
+  <text 
+    x={props.x} 
+    y={props.y} 
+    font-family="monospace" 
+    font-size={props.fontSize} 
+    font-weight="bold"
+    fill={props.fill} 
+    filter={props.filter} 
+    xml:space="preserve"
+  >
+    {props.lines.map((line, index) => (
+      <tspan x={props.x} dy={index === 0 ? "0" : props.lineHeight}>
+        {line}
+      </tspan>
+    ))}
+  </text>
+)
+
 export function Logo(props: LogoProps) {
-  const { variant = "mark", size = 64, ...others } = props
+  const { variant = "mark", size = 64, theme = "rainbow", ...others } = props
+
+  const fillColor = theme === "rainbow" ? "url(#rainbow)" : "currentColor"
+  const shouldUseFilter = theme === "rainbow"
 
   if (variant === "mark") {
+    const scale = size / 200 // Base size is 200px wide
     return (
       <svg
         width={size}
-        height={size * (42 / 64)}
-        viewBox="0 0 64 42"
+        height={size * 0.45} // 90/200 aspect ratio
+        viewBox="0 0 200 90"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         class={`text-text ${props.class ?? ""}`}
         {...others}
       >
-        <path d="M0 0H24V8.5H8V16.5H24V25H8V33H24V41.5H0V33H16V25H0V16.5H16V8.5H0V0Z" fill="currentColor" />
-        <path d="M40 0H48V41.5H40V0Z" fill="currentColor" />
-        <path d="M48 0H64V16.5H48V0Z" fill="currentColor" />
+        {shouldUseFilter && createGradientDefs(1)}
+        <AsciiText
+          lines={ASCII_ART.mark}
+          x={5}
+          y={20}
+          fontSize={10}
+          lineHeight={12}
+          fill={fillColor}
+          filter={shouldUseFilter ? "url(#glow)" : undefined}
+        />
       </svg>
     )
   }
 
-  if (variant === "full") {
-    return (
-      <svg
-        width={size * (425 / 42)}
-        height={size}
-        viewBox="0 0 425 42"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        {...others}
-      >
-        <path d="M0 0H24V8.5H8V16.5H24V25H8V33H24V41.5H0V33H16V25H0V16.5H16V8.5H0V0Z" fill="currentColor" />
-        <path d="M32 0H40V41.5H32V0Z" fill="currentColor" />
-        <path d="M40 0H48V25H40V0Z" fill="currentColor" />
-        <path d="M48 0H56V25H48V0Z" fill="currentColor" />
-        <path d="M56 0H64V41.5H56V0Z" fill="currentColor" />
-        <path d="M72 16.5H80V0H96V16.5H104V25H96V41.5H80V25H72V16.5Z" fill="currentColor" />
-        <path d="M80 8.5H96V16.5H80V8.5Z" fill="currentColor" />
-        <path d="M112 0H120V41.5H112V0Z" fill="currentColor" />
-        <path d="M120 0H136V16.5H120V0Z" fill="currentColor" />
-        <path d="M120 16.5H128V25H136V41.5H144V25H136V16.5Z" fill="currentColor" />
-        <path d="M152 0H184V8.5H172V41.5H164V8.5H152V0Z" fill="currentColor" />
-        <path d="M192 0H200V16.5H204V25H212V16.5H216V0H224V16.5H212V25H204V25H200V16.5H192V0Z" fill="currentColor" />
-        <path d="M204 25H212V41.5H204V25Z" fill="currentColor" />
-        <path d="M232 0H240V41.5H232V0Z" fill="currentColor" />
-        <path d="M240 0H256V16.5H240V0Z" fill="currentColor" />
-        <path d="M272 16.5H280V0H296V16.5H304V25H296V41.5H280V25H272V16.5Z" fill="currentColor" />
-        <path d="M280 8.5H296V16.5H280V8.5Z" fill="currentColor" />
-        <path d="M312 0H320V41.5H312V0Z" fill="currentColor" />
-        <path d="M320 16.5H328V8.5H336V0H344V41.5H336V16.5H328V33H320V16.5Z" fill="currentColor" />
-        <path d="M352 0H384V8.5H372V41.5H364V8.5H352V0Z" fill="currentColor" />
-        <path d="M392 0H416V8.5H400V16.5H416V25H400V33H416V41.5H392V33H408V25H392V16.5H408V8.5H392V0Z" fill="currentColor" />
-      </svg>
-    )
-  }
+  // Full and ornate variants share the same structure
+  const isOrnate = variant === "ornate"
+  const glowIntensity = isOrnate ? 3 : 1
+  const scale = size / 180
+  const scaledWidth = 600 * scale
 
   return (
     <svg
-      width={size * (425 / 42)}
+      width={scaledWidth}
       height={size}
-      viewBox="0 0 425 50"
+      viewBox="0 0 600 180"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       {...others}
     >
-      <path d="M8 16.5H24V33H8V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M40 16.5H56V33H40V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M80 16.5H96V33H80V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M120 16.5H136V33H120V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M164 16.5H172V33H164V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M204 16.5H212V33H204V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M240 16.5H256V33H240V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M280 16.5H296V33H280V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M328 16.5H336V33H328V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M364 16.5H372V33H364V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M400 16.5H408V33H400V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M0 0H24V8.5H8V16.5H24V25H8V33H24V41.5H0V33H16V25H0V16.5H16V8.5H0V0Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M32 0H40V41.5H32V0Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M40 0H48V25H40V0Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M48 0H56V25H48V0Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M56 0H64V41.5H56V0Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M72 16.5H80V0H96V16.5H104V25H96V41.5H80V25H72V16.5Z" fill="currentColor" fill-opacity="0.5" />
-      <path d="M80 8.5H96V16.5H80V8.5Z" fill="currentColor" fill-opacity="0.5" />
-      <path d="M112 0H120V41.5H112V0Z" fill="currentColor" fill-opacity="0.5" />
-      <path d="M120 0H136V16.5H120V0Z" fill="currentColor" fill-opacity="0.5" />
-      <path d="M120 16.5H128V25H136V41.5H144V25H136V16.5Z" fill="currentColor" fill-opacity="0.5" />
-      <path d="M152 0H184V8.5H172V41.5H164V8.5H152V0Z" fill="currentColor" fill-opacity="0.5" />
-      <path d="M192 0H200V16.5H204V25H212V16.5H216V0H224V16.5H212V25H204V25H200V16.5H192V0Z" fill="currentColor" fill-opacity="0.5" />
-      <path d="M204 25H212V41.5H204V25Z" fill="currentColor" fill-opacity="0.5" />
-      <path d="M232 0H240V41.5H232V0Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M240 0H256V16.5H240V0Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M272 16.5H280V0H296V16.5H304V25H296V41.5H280V25H272V16.5Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M280 8.5H296V16.5H280V8.5Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M312 0H320V41.5H312V0Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M320 16.5H328V8.5H336V0H344V41.5H336V16.5H328V33H320V16.5Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M352 0H384V8.5H372V41.5H364V8.5H352V0Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M392 0H416V8.5H400V16.5H416V25H400V33H416V41.5H392V33H408V25H392V16.5H408V8.5H392V0Z" fill="currentColor" fill-opacity="0.95" />
+      {shouldUseFilter && createGradientDefs(glowIntensity)}
+      <AsciiText
+        lines={ASCII_ART.full}
+        x={10}
+        y={30}
+        fontSize={12}
+        lineHeight={14}
+        fill={fillColor}
+        filter={shouldUseFilter ? "url(#glow)" : undefined}
+      />
     </svg>
   )
 }
