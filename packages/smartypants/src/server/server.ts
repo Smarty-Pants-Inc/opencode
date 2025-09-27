@@ -53,6 +53,29 @@ const ERRORS = {
 export namespace Server {
   const log = Log.create({ service: "server" })
 
+  const __lf_sidecar_started = new Set<string>()
+  async function ensureLangfuseSidecar(opts: { directory: string; port: number }) {
+    const env = process.env as Record<string, string | undefined>
+    if (!(env["OPENCODE_OBSERVE"] ?? "").includes("langfuse")) return
+    if (__lf_sidecar_started.has(opts.directory)) return
+    try {
+      const script = new URL("../../../langfuse-sidecar/bin/sidecar.mjs", import.meta.url).pathname
+      const p = Bun.spawn(["node", script], {
+        env: {
+          ...process.env,
+          OPENCODE_SERVER_PORT: String(opts.port),
+          OPENCODE_EVENT_URL: `http://127.0.0.1:${opts.port}/event`,
+        },
+        stdout: "ignore",
+        stderr: "inherit",
+      })
+      __lf_sidecar_started.add(opts.directory)
+      log.info("langfuse sidecar started", { pid: p.pid, port: opts.port })
+    } catch (e) {
+      log.error("failed to start sidecar", { error: e })
+    }
+  }
+
   export const Event = {
     Connected: Bus.event("server.connected", z.object({})),
   }
@@ -1421,6 +1444,7 @@ export namespace Server {
       idleTimeout: 0,
       fetch: App().fetch,
     })
+    ensureLangfuseSidecar({ directory: Global.Path.state, port: opts.port }).catch(() => {})
     return server
   }
 }

@@ -20,6 +20,142 @@ import { GithubCommand } from "./cli/cmd/github"
 import { ExportCommand } from "./cli/cmd/export"
 import { AttachCommand } from "./cli/cmd/attach"
 
+// Langfuse integration (v4 via Node OTel only)
+try {
+  const env = process.env as Record<string, string | undefined>
+  if (
+    (env["OPENCODE_OBSERVE"] ?? "").includes("langfuse-app") &&
+    env["LANGFUSE_SECRET_KEY"] &&
+    env["LANGFUSE_PUBLIC_KEY"] &&
+    typeof (globalThis as any).Bun === "undefined"
+  ) {
+    let initialized = false
+    try {
+      const { NodeSDK } = (await import("@opentelemetry/sdk-node")) as any
+      const { LangfuseSpanProcessor } = (await import("@langfuse/otel")) as any
+      const sdk = new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor() as any] } as any)
+      await sdk.start()
+      initialized = true
+    } catch {}
+
+    if (!initialized) {
+      try {
+        const { BasicTracerProvider } = (await import("@opentelemetry/sdk-trace-base")) as any
+        const { LangfuseSpanProcessor } = (await import("@langfuse/otel")) as any
+        const provider = new BasicTracerProvider() as any
+        provider.addSpanProcessor(new LangfuseSpanProcessor() as any)
+        provider.register()
+        initialized = true
+      } catch {}
+    }
+
+    if (initialized) {
+      try {
+        const { startActiveObservation, startObservation, updateActiveTrace } = await import("@langfuse/tracing")
+        const { Bus } = await import("./bus")
+
+        const stepObs = new Map<string, any>()
+        const toolObs = new Map<string, any>()
+
+        Bus.subscribeAll((evt: any) =>
+          startActiveObservation(`opencode:${evt.type}`, async () => {
+            const p = evt?.properties as any
+            const sid = p?.sessionID || p?.info?.sessionID || p?.part?.sessionID
+            if (sid) {
+              try {
+                updateActiveTrace({ sessionId: String(sid) })
+              } catch {}
+            }
+            const t = evt.type as string
+
+            if (t === "message.part.updated" && p?.part) {
+              const part = p.part as any
+              if (part.type === "step-start") {
+                const s = startObservation("step")
+                stepObs.set(part.id, s)
+                return
+              }
+              if (part.type === "step-finish") {
+                const s = stepObs.get(part.id) ?? startObservation("step")
+                s.update({ metadata: { tokens: part.tokens, cost: part.cost } })
+                s.end()
+                stepObs.delete(part.id)
+                return
+              }
+              if (part.type === "tool") {
+                if (part.state.status === "pending" || part.state.status === "running") {
+                  const s = startObservation(`tool:${part.tool}`, {
+                    input: part.state.input,
+                    metadata: { callID: part.callID },
+                  })
+                  toolObs.set(part.callID, s)
+                  return
+                }
+                if (part.state.status === "completed") {
+                  const s = toolObs.get(part.callID) ?? startObservation(`tool:${part.tool}`)
+                  s.update({ input: { input: part.state.input, output: part.state.output, meta: part.metadata } })
+                  s.end()
+                  toolObs.delete(part.callID)
+                  return
+                }
+                if (part.state.status === "error") {
+                  const s = toolObs.get(part.callID) ?? startObservation(`tool:${part.tool}`)
+                  s.update({ input: { input: part.state.input, error: part.state.error, meta: part.metadata } })
+                  s.end()
+                  toolObs.delete(part.callID)
+                  return
+                }
+              }
+              if (part.type === "text") {
+                const s = startObservation("text", { input: { text: part.text } })
+                s.end()
+                return
+              }
+              if (part.type === "reasoning") {
+                const s = startObservation("reasoning", { input: { text: part.text }, metadata: part.metadata })
+                s.end()
+                return
+              }
+              if (part.type === "file") {
+                const s = startObservation("file", {
+                  input: { mime: part.mime, filename: part.filename, url: part.url },
+                })
+                s.end()
+                return
+              }
+              const s = startObservation(part.type, { input: part })
+              s.end()
+              return
+            }
+
+            if (t === "message.updated" && p?.info) {
+              const info = p.info as any
+              if (info.role === "assistant") {
+                const s = startObservation(
+                  "assistant",
+                  { metadata: { providerID: info.providerID, modelID: info.modelID } } as any,
+                  { asType: "generation" } as any,
+                )
+                s.update({ metadata: { tokens: info.tokens, cost: info.cost } })
+                s.end()
+                return
+              }
+              if (info.role === "user") {
+                const s = startObservation("user", { input: { time: info.time?.created } })
+                s.end()
+                return
+              }
+            }
+
+            const s = startObservation(t, { input: p })
+            s.end()
+          }),
+        )
+      } catch {}
+    }
+  }
+} catch {}
+
 const cancel = new AbortController()
 
 // Print logo explicitly before yargs help so leading spaces are preserved

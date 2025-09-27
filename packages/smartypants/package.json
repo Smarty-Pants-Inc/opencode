@@ -57,6 +57,10 @@
     "web-tree-sitter": "0.22.6",
     "xdg-basedir": "5.1.0",
     "yargs": "18.0.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@langfuse/tracing": "^4.0.0",
+    "@langfuse/otel": "^4.0.0",
+    "@opentelemetry/sdk-trace-base": "^1.0.0",
+    "langfuse": "^3.38.5"
   }
 }
