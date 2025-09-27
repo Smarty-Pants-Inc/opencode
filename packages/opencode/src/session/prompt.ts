@@ -867,9 +867,9 @@ export namespace SessionPrompt {
       async process(stream: StreamTextResult<Record<string, AITool>, never>) {
         log.info("process")
         if (!assistantMsg) throw new Error("call next() first before processing")
+        let reasoningMap: Record<string, MessageV2.ReasoningPart> = {}
         try {
           let currentText: MessageV2.TextPart | undefined
-          let reasoningMap: Record<string, MessageV2.ReasoningPart> = {}
 
           for await (const value of stream.fullStream) {
             input.abort.throwIfAborted()
@@ -1141,7 +1141,7 @@ export namespace SessionPrompt {
           })
         }
         // Clean up any open reasoning parts
-        for (const [id, reasoningPart] of Object.entries(reasoningMap)) {
+        for (const reasoningPart of Object.values(reasoningMap)) {
           if (!reasoningPart.time.end) {
             reasoningPart.time.end = Date.now()
             await Session.updatePart(reasoningPart)
