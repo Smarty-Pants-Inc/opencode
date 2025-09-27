@@ -64,14 +64,14 @@ const AsciiText = (props: {
   fill: string
   filter?: string
 }) => (
-  <text 
-    x={props.x} 
-    y={props.y} 
-    fontFamily="monospace" 
-    fontSize={props.fontSize}
-    fontWeight="bold"
-    fill={props.fill} 
-    filter={props.filter} 
+  <text
+    x={props.x}
+    y={props.y}
+    font-family="monospace"
+    font-size={`${props.fontSize}`}
+    font-weight="bold"
+    fill={props.fill}
+    filter={props.filter}
     style="white-space: pre"
   >
     {props.lines.map((line, index) => (
