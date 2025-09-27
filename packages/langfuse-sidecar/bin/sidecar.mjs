@@ -41,7 +41,7 @@ async function connectAndStream(url) {
   function handle(ev) {
     const t = ev.type
     const p = ev.properties || {}
-    const sid = p?.info?.id ?? p?.sessionID
+    const sid = p?.sessionID || p?.info?.sessionID || p?.part?.sessionID
 
     startActiveObservation(`opencode:${t}`, async () => {
       if (sid) {
@@ -106,7 +106,7 @@ async function connectAndStream(url) {
       if (t === "message.updated" && p?.info) {
         const info = p.info
         if (info.role === "assistant") {
-          const s = startObservation("assistant", { metadata: { providerID: info.providerID, modelID: info.modelID } })
+          const s = startObservation("assistant", { type: "GENERATION", metadata: { providerID: info.providerID, modelID: info.modelID } })
           s.update({ metadata: { tokens: info.tokens, cost: info.cost } })
           s.end()
           return
