@@ -64,20 +64,20 @@ async function connectAndStream(url) {
         }
         if (part.type === "tool") {
           if (part.state.status === "pending" || part.state.status === "running") {
-            const s = startObservation(`tool:${part.tool}`, { input: part.state.input, metadata: { callID: part.callID } })
+            const s = startObservation(`tool:${part.tool}`, { type: "TOOL", input: part.state.input, metadata: { callID: part.callID } })
             toolObs.set(part.callID, s)
             return
           }
           if (part.state.status === "completed") {
             const s = toolObs.get(part.callID) ?? startObservation(`tool:${part.tool}`)
-            s.update({ input: { input: part.state.input, output: part.state.output, meta: part.metadata } })
+            s.update({ input: part.state.input, output: part.state.output, metadata: part.metadata })
             s.end()
             toolObs.delete(part.callID)
             return
           }
           if (part.state.status === "error") {
             const s = toolObs.get(part.callID) ?? startObservation(`tool:${part.tool}`)
-            s.update({ input: { input: part.state.input, error: part.state.error, meta: part.metadata } })
+            s.update({ input: part.state.input, output: { error: part.state.error }, metadata: part.metadata })
             s.end()
             toolObs.delete(part.callID)
             return
@@ -107,7 +107,7 @@ async function connectAndStream(url) {
         const info = p.info
         if (info.role === "assistant") {
           const s = startObservation("assistant", { metadata: { providerID: info.providerID, modelID: info.modelID } })
-          s.update({ input: { tokens: info.tokens, cost: info.cost } })
+          s.update({ metadata: { tokens: info.tokens, cost: info.cost } })
           s.end()
           return
         }
