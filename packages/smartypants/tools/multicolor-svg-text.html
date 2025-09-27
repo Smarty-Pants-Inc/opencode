@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multicolor SVG Text</title>
+    <style>
+        /* Method 1: Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Bangers&family=Righteous&display=swap');
+        
+        /* Method 2: Local font file */
+        @font-face {
+            font-family: 'MyCustomFont';
+            src: url('path/to/your/font.ttf') format('truetype');
+        }
+    </style>
+</head>
+<body>
+    <svg width="400" height="100" xmlns="http://www.w3.org/2000/svg">
+        <!-- Define gradients for multicolor effects -->
+        <defs>
+            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#4ecdc4;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#45b7d1;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#f9ca24;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        
+        <!-- Method 1: Each letter with different solid colors -->
+        <text x="20" y="40" font-family="Arial, sans-serif" font-size="32" font-weight="bold">
+            <tspan fill="#ff6b6b">H</tspan>
+            <tspan fill="#4ecdc4">E</tspan>
+            <tspan fill="#45b7d1">L</tspan>
+            <tspan fill="#f9ca24">L</tspan>
+            <tspan fill="#a55eea">O</tspan>
+        </text>
+        
+        <!-- Method 2: Gradient fill on entire word -->
+        <text x="20" y="80" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="url(#grad1)">
+            WORLD
+        </text>
+    </svg>
+    
+    <!-- Advanced example with stroke and effects -->
+    <svg width="500" height="120" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#ff0000;stop-opacity:1" />
+                <stop offset="16.66%" style="stop-color:#ff8000;stop-opacity:1" />
+                <stop offset="33.33%" style="stop-color:#ffff00;stop-opacity:1" />
+                <stop offset="50%" style="stop-color:#00ff00;stop-opacity:1" />
+                <stop offset="66.66%" style="stop-color:#0080ff;stop-opacity:1" />
+                <stop offset="83.33%" style="stop-color:#8000ff;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#ff0080;stop-opacity:1" />
+            </linearGradient>
+            <filter id="shadow">
+                <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.3"/>
+            </filter>
+        </defs>
+        
+        <text x="25" y="60" font-family="Impact, Arial Black, sans-serif" font-size="48" 
+              fill="url(#rainbow)" stroke="#333" stroke-width="1" filter="url(#shadow)">
+            RAINBOW
+        </text>
+    </svg>
+    
+    <!-- Examples with different fonts -->
+    <h3>Different Font Examples:</h3>
+    
+    <!-- Google Fonts examples -->
+    <svg width="500" height="80" xmlns="http://www.w3.org/2000/svg">
+        <text x="25" y="40" font-family="'Orbitron', monospace" font-size="32" font-weight="900"
+              fill="url(#rainbow)" stroke="#000" stroke-width="0.5">
+            FUTURISTIC
+        </text>
+    </svg>
+    
+    <svg width="500" height="80" xmlns="http://www.w3.org/2000/svg">
+        <text x="25" y="50" font-family="'Bangers', cursive" font-size="36"
+              fill="url(#rainbow)" stroke="#000" stroke-width="0.5">
+            COMIC STYLE
+        </text>
+    </svg>
+    
+    <svg width="500" height="80" xmlns="http://www.w3.org/2000/svg">
+        <text x="25" y="45" font-family="'Righteous', cursive" font-size="32"
+              fill="url(#rainbow)" stroke="#000" stroke-width="0.5">
+            BOLD & CLEAN
+        </text>
+    </svg>
+    
+    <!-- Custom font example (requires actual font file) -->
+    <svg width="500" height="80" xmlns="http://www.w3.org/2000/svg">
+        <text x="25" y="45" font-family="'MyCustomFont', Arial, sans-serif" font-size="32"
+              fill="url(#rainbow)" stroke="#000" stroke-width="0.5">
+            CUSTOM FONT
+        </text>
+    </svg>
+    
+    <div style="margin: 20px; font-family: Arial, sans-serif; font-size: 14px; color: #666;">
+        <h4>How to use your own TTF fonts:</h4>
+        <ol>
+            <li><strong>Google Fonts:</strong> Add @import in CSS (easiest)</li>
+            <li><strong>Local TTF file:</strong> Use @font-face with src: url('your-font.ttf')</li>
+            <li><strong>System fonts:</strong> Just use font-family="YourSystemFont"</li>
+        </ol>
+        
+        <h4>To use your TTF file:</h4>
+        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">@font-face {
+    font-family: 'MyAwesomeFont';
+    src: url('./fonts/my-awesome-font.ttf') format('truetype');
+}
+
+/* Then use it: */
+font-family="'MyAwesomeFont', Arial, sans-serif"</pre>
+    </div>
+</body>
+</html>
