@@ -54,7 +54,8 @@ try {
 
         Bus.subscribeAll((evt: any) =>
           startActiveObservation(`opencode:${evt.type}`, async () => {
-            const sid = evt?.properties?.info?.id ?? evt?.properties?.sessionID
+            const p = evt?.properties as any
+            const sid = p?.sessionID || p?.info?.sessionID || p?.part?.sessionID
             if (sid) {
               try { updateActiveTrace({ sessionId: String(sid) }) } catch {}
             }
@@ -119,8 +120,8 @@ try {
             if (t === "message.updated" && p?.info) {
               const info = p.info as any
               if (info.role === "assistant") {
-                const s = startObservation("assistant", { metadata: { providerID: info.providerID, modelID: info.modelID } })
-                s.update({ input: { tokens: info.tokens, cost: info.cost } })
+                const s = startObservation("assistant", { type: "GENERATION", metadata: { providerID: info.providerID, modelID: info.modelID } })
+                s.update({ metadata: { tokens: info.tokens, cost: info.cost } })
                 s.end()
                 return
               }
