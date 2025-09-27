@@ -1,0 +1,14 @@
+{
+  "name": "opencode-langfuse-sidecar",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "opencode-langfuse-sidecar": "./bin/sidecar.mjs"
+  },
+  "dependencies": {
+    "@langfuse/tracing": "^4.0.0",
+    "@langfuse/otel": "^4.0.0",
+    "@opentelemetry/sdk-node": "^0.205.0"
+  }
+}
