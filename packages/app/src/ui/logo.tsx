@@ -14,22 +14,22 @@ const ASCII_ART = {
     "                    ",
     " .oooo.o oo.oooo.  ",
     "d88(  \"8  888' `88b ",
-    "`\"Y88b.   88    888 ",
+    '`"Y88b.   88    888 ',
     "o.  )88b  88bod8P' ",
-    "8\"\"888P'  888       ",
-    "         o888o      "
+    '8""888P\'  888       ',
+    "         o888o      ",
   ],
   full: [
     "                                                  .               ",
     "                                                .o8               ",
     " .oooo.o ooo. .oo.  .oo.    .oooo.   oooo d8b .o888oo oooo    ooo ",
-    "d88(  \"8 `888P\"Y88bP\"Y88b  `P  )88b  `888\"\"8P   888    `88.  .8'  ",
-    "`\"Y88b.   888   888   888   .oP\"888   888       888     `88..8'   ",
+    'd88(  "8 `888P"Y88bP"Y88b  `P  )88b  `888""8P   888    `88.  .8\'  ',
+    '`"Y88b.   888   888   888   .oP"888   888       888     `88..8\'   ',
     "o.  )88b  888   888   888  d8(  888   888       888 .    `888'    ",
-    "8\"\"888P' o888o o888o o888o `Y888\"\"8o d888b      \"888\"     .8'     ",
+    '8""888P\' o888o o888o o888o `Y888""8o d888b      "888"     .8\'     ',
     "                                                      .o..P'      ",
-    "                                                      `Y8P'       "
-  ]
+    "                                                      `Y8P'       ",
+  ],
 }
 
 // Reusable gradient definitions
@@ -45,10 +45,10 @@ const createGradientDefs = (glowIntensity: number = 1) => (
       <stop offset="100%" style="stop-color:#ff0080" />
     </linearGradient>
     <filter id="glow">
-      <feGaussianBlur stdDeviation={glowIntensity} result="coloredBlur"/>
+      <feGaussianBlur stdDeviation={glowIntensity} result="coloredBlur" />
       <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="coloredBlur" />
+        <feMergeNode in="SourceGraphic" />
       </feMerge>
     </filter>
   </defs>
@@ -64,15 +64,15 @@ const AsciiText = (props: {
   fill: string
   filter?: string
 }) => (
-  <text 
-    x={props.x} 
-    y={props.y} 
-    font-family="monospace" 
-    font-size={props.fontSize} 
+  <text
+    x={props.x}
+    y={props.y}
+    font-family="monospace"
+    font-size={props.fontSize}
     font-weight="bold"
-    fill={props.fill} 
-    filter={props.filter} 
-    xmlSpace="preserve"
+    fill={props.fill}
+    filter={props.filter}
+    style="white-space: pre"
   >
     {props.lines.map((line, index) => (
       <tspan x={props.x} dy={index === 0 ? "0" : props.lineHeight}>
