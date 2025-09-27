@@ -72,7 +72,7 @@ const AsciiText = (props: {
     font-weight="bold"
     fill={props.fill} 
     filter={props.filter} 
-    xml:space="preserve"
+    xmlSpace="preserve"
   >
     {props.lines.map((line, index) => (
       <tspan x={props.x} dy={index === 0 ? "0" : props.lineHeight}>
