@@ -49,6 +49,8 @@ async function connectAndStream(url) {
 
   const stepObs = new Map()
   const toolObs = new Map()
+  const genByMsg = new Map() // messageID -> { obs, out: string }
+  const userBySession = new Map() // sessionID -> { messageID, text }
 
   function handle(ev) {
     const t = ev.type
@@ -72,6 +74,13 @@ async function connectAndStream(url) {
           s.update({ metadata: { tokens: part.tokens, cost: part.cost } })
           s.end()
           stepObs.delete(part.id)
+          // finish assistant generation if open
+          const g = genByMsg.get(part.messageID)
+          if (g) {
+            g.obs.update({ output: sanitizeText(g.out || ""), metadata: { tokens: part.tokens, cost: part.cost } })
+            g.obs.end()
+            genByMsg.delete(part.messageID)
+          }
           return
         }
         if (part.type === "tool") {
@@ -98,6 +107,19 @@ async function connectAndStream(url) {
         if (part.type === "text") {
           const s = startObservation("text", { type: "EVENT", input: { text: sanitizeText(part.text) }, metadata: { messageID: part.messageID } })
           s.end()
+          // accumulate into either user or assistant generation
+          if (sid) {
+            const u = userBySession.get(sid)
+            if (u && u.messageID === part.messageID) {
+              u.text = (u.text || "") + String(part.text || "")
+              userBySession.set(sid, u)
+            }
+          }
+          const g = genByMsg.get(part.messageID)
+          if (g) {
+            g.out = (g.out || "") + String(part.text || "")
+            genByMsg.set(part.messageID, g)
+          }
           return
         }
         if (part.type === "reasoning") {
@@ -118,14 +140,20 @@ async function connectAndStream(url) {
       if (t === "message.updated" && p?.info) {
         const info = p.info
         if (info.role === "assistant") {
-          const s = startObservation("assistant", { type: "GENERATION", metadata: { providerID: info.providerID, modelID: info.modelID } })
+          let inputText
+          if (sid) {
+            const u = userBySession.get(sid)
+            inputText = u?.text
+          }
+          const s = startObservation("assistant", { type: "GENERATION", input: inputText ? { text: sanitizeText(inputText) } : undefined, metadata: { providerID: info.providerID, modelID: info.modelID } })
           s.update({ metadata: { tokens: info.tokens, cost: info.cost } })
-          s.end()
+          genByMsg.set(info.id, { obs: s, out: "" })
           return
         }
         if (info.role === "user") {
           const s = startObservation("user", { type: "EVENT", input: { time: info.time?.created } })
           s.end()
+          if (sid) userBySession.set(sid, { messageID: info.id, text: "" })
           return
         }
       }
