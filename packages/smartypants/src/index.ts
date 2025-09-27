@@ -23,22 +23,27 @@ import { AttachCommand } from "./cli/cmd/attach"
 // Langfuse integration (v4 via Node OTel only)
 try {
   const env = process.env as Record<string, string | undefined>
-  if ((env.OPENCODE_OBSERVE ?? "").includes("langfuse-app") && env.LANGFUSE_SECRET_KEY && env.LANGFUSE_PUBLIC_KEY && typeof (globalThis as any).Bun === "undefined") {
+  if (
+    (env["OPENCODE_OBSERVE"] ?? "").includes("langfuse-app") &&
+    env["LANGFUSE_SECRET_KEY"] &&
+    env["LANGFUSE_PUBLIC_KEY"] &&
+    typeof (globalThis as any).Bun === "undefined"
+  ) {
     let initialized = false
     try {
-      const { NodeSDK } = await import("@opentelemetry/sdk-node")
-      const { LangfuseSpanProcessor } = await import("@langfuse/otel")
-      const sdk = new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor()] })
+      const { NodeSDK } = (await import("@opentelemetry/sdk-node")) as any
+      const { LangfuseSpanProcessor } = (await import("@langfuse/otel")) as any
+      const sdk = new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor() as any] } as any)
       await sdk.start()
       initialized = true
     } catch {}
 
     if (!initialized) {
       try {
-        const { BasicTracerProvider } = await import("@opentelemetry/sdk-trace-base")
-        const { LangfuseSpanProcessor } = await import("@langfuse/otel")
-        const provider = new BasicTracerProvider()
-        provider.addSpanProcessor(new LangfuseSpanProcessor())
+        const { BasicTracerProvider } = (await import("@opentelemetry/sdk-trace-base")) as any
+        const { LangfuseSpanProcessor } = (await import("@langfuse/otel")) as any
+        const provider = new BasicTracerProvider() as any
+        provider.addSpanProcessor(new LangfuseSpanProcessor() as any)
         provider.register()
         initialized = true
       } catch {}
@@ -57,7 +62,9 @@ try {
             const p = evt?.properties as any
             const sid = p?.sessionID || p?.info?.sessionID || p?.part?.sessionID
             if (sid) {
-              try { updateActiveTrace({ sessionId: String(sid) }) } catch {}
+              try {
+                updateActiveTrace({ sessionId: String(sid) })
+              } catch {}
             }
             const t = evt.type as string
 
@@ -77,7 +84,10 @@ try {
               }
               if (part.type === "tool") {
                 if (part.state.status === "pending" || part.state.status === "running") {
-                  const s = startObservation(`tool:${part.tool}`, { input: part.state.input, metadata: { callID: part.callID } })
+                  const s = startObservation(`tool:${part.tool}`, {
+                    input: part.state.input,
+                    metadata: { callID: part.callID },
+                  })
                   toolObs.set(part.callID, s)
                   return
                 }
@@ -107,7 +117,9 @@ try {
                 return
               }
               if (part.type === "file") {
-                const s = startObservation("file", { input: { mime: part.mime, filename: part.filename, url: part.url } })
+                const s = startObservation("file", {
+                  input: { mime: part.mime, filename: part.filename, url: part.url },
+                })
                 s.end()
                 return
               }
@@ -119,7 +131,11 @@ try {
             if (t === "message.updated" && p?.info) {
               const info = p.info as any
               if (info.role === "assistant") {
-                const s = startObservation("assistant", { type: "GENERATION", metadata: { providerID: info.providerID, modelID: info.modelID } })
+                const s = startObservation(
+                  "assistant",
+                  { metadata: { providerID: info.providerID, modelID: info.modelID } } as any,
+                  { asType: "generation" } as any,
+                )
                 s.update({ metadata: { tokens: info.tokens, cost: info.cost } })
                 s.end()
                 return
