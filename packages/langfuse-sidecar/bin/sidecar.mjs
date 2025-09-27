@@ -13,6 +13,18 @@ const LOG = (...args) => {
   if (process.env.LF_SIDECAR_LOG === "1") console.log("[lf-sidecar]", ...args)
 }
 
+function sanitizeText(t) {
+  if (!t) return t
+  const s = String(t)
+  return s.length > 2000 ? s.slice(0, 2000) + "…" : s
+}
+
+function sanitizeFileUrl(u) {
+  if (!u) return u
+  if (typeof u === "string" && u.startsWith("data:")) return "data:[omitted]"
+  return u
+}
+
 async function initOtel() {
   const sdk = new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor()] })
   try { await Promise.resolve(sdk.start()) } catch {}
@@ -84,21 +96,21 @@ async function connectAndStream(url) {
           }
         }
         if (part.type === "text") {
-          const s = startObservation("text", { input: { text: part.text } })
+          const s = startObservation("text", { type: "EVENT", input: { text: sanitizeText(part.text) }, metadata: { messageID: part.messageID } })
           s.end()
           return
         }
         if (part.type === "reasoning") {
-          const s = startObservation("reasoning", { input: { text: part.text }, metadata: part.metadata })
+          const s = startObservation("reasoning", { type: "EVENT", input: { text: sanitizeText(part.text) }, metadata: { ...part.metadata, messageID: part.messageID } })
           s.end()
           return
         }
         if (part.type === "file") {
-          const s = startObservation("file", { input: { mime: part.mime, filename: part.filename, url: part.url } })
+          const s = startObservation("file", { type: "EVENT", input: { mime: part.mime, filename: part.filename, url: sanitizeFileUrl(part.url) }, metadata: { messageID: part.messageID } })
           s.end()
           return
         }
-        const s = startObservation(part.type, { input: part })
+        const s = startObservation(part.type, { type: "SPAN", input: part, metadata: { messageID: part.messageID } })
         s.end()
         return
       }
@@ -112,7 +124,7 @@ async function connectAndStream(url) {
           return
         }
         if (info.role === "user") {
-          const s = startObservation("user", { input: { time: info.time?.created } })
+          const s = startObservation("user", { type: "EVENT", input: { time: info.time?.created } })
           s.end()
           return
         }
