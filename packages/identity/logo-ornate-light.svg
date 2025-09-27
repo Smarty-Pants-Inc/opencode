@@ -1,4 +1,4 @@
-<svg width="600" height="180" xmlns="http://www.w3.org/2000/svg">
+<svg width="732.8" height="146" xmlns="http://www.w3.org/2000/svg">
     <defs>
         <linearGradient id="rainbowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" style="stop-color:#ff0000" />
@@ -10,7 +10,7 @@
             <stop offset="100%" style="stop-color:#ff0080" />
         </linearGradient>
         <filter id="glow">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
             <feMerge>
                 <feMergeNode in="coloredBlur"/>
                 <feMergeNode in="SourceGraphic"/>
@@ -18,17 +18,15 @@
         </filter>
     </defs>
     
-    <text x="10" y="30" font-family="monospace" font-size="12" font-weight="bold" fill="url(#rainbowGradient)" filter="url(#glow)" xml:space="preserve">
-        <tspan x="10" dy="0">                                         888             </tspan>
-        <tspan x="10" dy="14">                                         888             </tspan>
-        <tspan x="10" dy="14">                                         888             </tspan>
-        <tspan x="10" dy="14"> .d8888b  88888b.d88b.   8888b.  888d888 888888 888  888 </tspan>
-        <tspan x="10" dy="14"> 88K      888 "888 "88b     "88b 888P"   888    888  888 </tspan>
-        <tspan x="10" dy="14"> "Y8888b. 888  888  888 .d888888 888     888    888  888 </tspan>
-        <tspan x="10" dy="14">      X88 888  888  888 888  888 888     Y88b.  Y88b 888 </tspan>
-        <tspan x="10" dy="14">  88888P' 888  888  888 "Y888888 888      "Y888  "Y88888 </tspan>
-        <tspan x="10" dy="14">                                                     888 </tspan>
-        <tspan x="10" dy="14">                                                Y8b d88P </tspan>
-        <tspan x="10" dy="14">                                                 "Y88P"  </tspan>
+    <text x="10" y="30" font-family="monospace" font-size="18" font-weight="bold" fill="url(#rainbowGradient)" filter="url(#glow)" xml:space="preserve">
+        <tspan x="10" dy="0">                                                  .               </tspan>
+        <tspan x="10" dy="14">                                                .o8               </tspan>
+        <tspan x="10" dy="14"> .oooo.o ooo. .oo.  .oo.    .oooo.   oooo d8b .o888oo oooo    ooo </tspan>
+        <tspan x="10" dy="14">d88(  "8 `888P"Y88bP"Y88b  `P  )88b  `888""8P   888    `88.  .8'  </tspan>
+        <tspan x="10" dy="14">`"Y88b.   888   888   888   .oP"888   888       888     `88..8'   </tspan>
+        <tspan x="10" dy="14">o.  )88b  888   888   888  d8(  888   888       888 .    `888'    </tspan>
+        <tspan x="10" dy="14">8""888P' o888o o888o o888o `Y888""8o d888b      "888"     .8'     </tspan>
+        <tspan x="10" dy="14">                                                      .o..P'      </tspan>
+        <tspan x="10" dy="14">                                                      `Y8P'       </tspan>
     </text>
 </svg>

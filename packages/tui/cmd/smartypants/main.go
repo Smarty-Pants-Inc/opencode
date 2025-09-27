@@ -35,7 +35,7 @@ func main() {
 	var sessionID *string = flag.String("session", "", "session ID")
 	flag.Parse()
 
-	url := os.Getenv("SMARTYPANTS_SERVER")
+	url := os.Getenv("OPENCODE_SERVER")
 
 	stat, err := os.Stdin.Stat()
 	if err != nil {

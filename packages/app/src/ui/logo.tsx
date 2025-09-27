@@ -8,28 +8,27 @@ export interface LogoProps extends ComponentProps<"svg"> {
   theme?: "rainbow" | "mono"
 }
 
-// ASCII art definitions
+// ASCII art definitions from logos.txt
 const ASCII_ART = {
   mark: [
     "                    ",
-    " .d8888b  888888b. ",
-    " 88K      888   888",
-    " \"Y8888b. 888888P\" ",
-    "      X88 888      ",
-    "  88888P' 888      "
+    " .oooo.o oo.oooo.  ",
+    "d88(  \"8  888' `88b ",
+    "`\"Y88b.   88    888 ",
+    "o.  )88b  88bod8P' ",
+    "8\"\"888P'  888       ",
+    "         o888o      "
   ],
   full: [
-    "                                         888             ",
-    "                                         888             ",
-    "                                         888             ",
-    " .d8888b  88888b.d88b.   8888b.  888d888 888888 888  888 ",
-    " 88K      888 \"888 \"88b     \"88b 888P\"   888    888  888 ",
-    " \"Y8888b. 888  888  888 .d888888 888     888    888  888 ",
-    "      X88 888  888  888 888  888 888     Y88b.  Y88b 888 ",
-    "  88888P' 888  888  888 \"Y888888 888      \"Y888  \"Y88888 ",
-    "                                                     888 ",
-    "                                                Y8b d88P ",
-    "                                                 \"Y88P\"  "
+    "                                                  .               ",
+    "                                                .o8               ",
+    " .oooo.o ooo. .oo.  .oo.    .oooo.   oooo d8b .o888oo oooo    ooo ",
+    "d88(  \"8 `888P\"Y88bP\"Y88b  `P  )88b  `888\"\"8P   888    `88.  .8'  ",
+    "`\"Y88b.   888   888   888   .oP\"888   888       888     `88..8'   ",
+    "o.  )88b  888   888   888  d8(  888   888       888 .    `888'    ",
+    "8\"\"888P' o888o o888o o888o `Y888\"\"8o d888b      \"888\"     .8'     ",
+    "                                                      .o..P'      ",
+    "                                                      `Y8P'       "
   ]
 }
 
@@ -90,12 +89,11 @@ export function Logo(props: LogoProps) {
   const shouldUseFilter = theme === "rainbow"
 
   if (variant === "mark") {
-    const scale = size / 200 // Base size is 200px wide
     return (
       <svg
         width={size}
-        height={size * 0.45} // 90/200 aspect ratio
-        viewBox="0 0 200 90"
+        height={size * 0.5} // Compact ratio for "sp"
+        viewBox="0 0 160 80"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         class={`text-text ${props.class ?? ""}`}
@@ -105,9 +103,9 @@ export function Logo(props: LogoProps) {
         <AsciiText
           lines={ASCII_ART.mark}
           x={5}
-          y={20}
-          fontSize={10}
-          lineHeight={12}
+          y={15}
+          fontSize={8}
+          lineHeight={10}
           fill={fillColor}
           filter={shouldUseFilter ? "url(#glow)" : undefined}
         />
@@ -118,14 +116,14 @@ export function Logo(props: LogoProps) {
   // Full and ornate variants share the same structure
   const isOrnate = variant === "ornate"
   const glowIntensity = isOrnate ? 3 : 1
-  const scale = size / 180
-  const scaledWidth = 600 * scale
+  const aspectRatio = 500 / 140 // Adjusted for new ASCII art
+  const scaledWidth = size * aspectRatio
 
   return (
     <svg
       width={scaledWidth}
       height={size}
-      viewBox="0 0 600 180"
+      viewBox="0 0 500 140"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       {...others}
@@ -133,10 +131,10 @@ export function Logo(props: LogoProps) {
       {shouldUseFilter && createGradientDefs(glowIntensity)}
       <AsciiText
         lines={ASCII_ART.full}
-        x={10}
-        y={30}
-        fontSize={12}
-        lineHeight={14}
+        x={5}
+        y={20}
+        fontSize={10}
+        lineHeight={12}
         fill={fillColor}
         filter={shouldUseFilter ? "url(#glow)" : undefined}
       />

@@ -1,4 +1,4 @@
-<svg width="200" height="90" xmlns="http://www.w3.org/2000/svg">
+<svg width="140" height="118" xmlns="http://www.w3.org/2000/svg">
     <defs>
         <linearGradient id="monoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" style="stop-color:#ffffff" />
@@ -13,12 +13,13 @@
         </filter>
     </defs>
     
-    <text x="5" y="20" font-family="monospace" font-size="10" font-weight="bold" fill="url(#monoGradient)" filter="url(#glow)" xml:space="preserve">
-        <tspan x="5" dy="0">                    </tspan>
-        <tspan x="5" dy="12"> .d8888b  888888b. </tspan>
-        <tspan x="5" dy="12"> 88K      888   888</tspan>
-        <tspan x="5" dy="12"> "Y8888b. 888888P" </tspan>
-        <tspan x="5" dy="12">      X88 888      </tspan>
-        <tspan x="5" dy="12">  88888P' 888      </tspan>
+    <text x="10" y="30" font-family="monospace" font-size="10" font-weight="bold" fill="url(#monoGradient)" filter="url(#glow)" xml:space="preserve">
+        <tspan x="10" dy="0">                    </tspan>
+        <tspan x="10" dy="14"> .oooo.o oo.oooo.  </tspan>
+        <tspan x="10" dy="14">d88(  "8  888' `88b </tspan>
+        <tspan x="10" dy="14">`"Y88b.   88    888 </tspan>
+        <tspan x="10" dy="14">o.  )88b  88bod8P' </tspan>
+        <tspan x="10" dy="14">8""888P'  888       </tspan>
+        <tspan x="10" dy="14">         o888o      </tspan>
     </text>
 </svg>
