@@ -60,7 +60,6 @@ try {
               try { updateActiveTrace({ sessionId: String(sid) }) } catch {}
             }
             const t = evt.type as string
-            const p = evt.properties as any
 
             if (t === "message.part.updated" && p?.part) {
               const part = p.part as any
