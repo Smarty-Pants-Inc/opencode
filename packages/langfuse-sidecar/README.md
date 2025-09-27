@@ -66,17 +66,9 @@ message.updated:
 
 ### Known Issues
 
-1. **Double text accumulation**: The agent's response "4" shows as "44" in Langfuse
-   - Likely streaming text parts being accumulated twice
-   - Need to debug text-start/text-delta/text-end handling
-
-2. **Missing reasoning traces**: Thinking/reasoning text not appearing in Langfuse
-   - Events fire but may not be properly attached to generation
-   - Need to verify reasoning observation nesting
-
-3. **Session hierarchy unclear**: Need to verify trace structure
-   - Should have: Session (root) → Generation → Tools/Reasoning/Text
-   - Currently may be creating flat traces instead of nested
+- FIXED (2025-09-27): Double text accumulation from duplicate streaming increments. Sidecar now appends only deltas per part.
+- FIXED (2025-09-27): Missing reasoning traces. Reasoning is recorded as nested spans with visible output.
+- FIXED (2025-09-27): Session hierarchy clarified. Traces now nest as Session → Generation → Tools/Reasoning/Text.
 
 ## Development
 
@@ -118,8 +110,5 @@ OPENCODE_OBSERVE=langfuse bun run --conditions=development packages/smartypants/
 
 ## Next Steps
 
-1. Fix double text accumulation bug
-2. Ensure reasoning observations attach properly
-3. Verify session → trace → observation hierarchy
-4. Add trace sampling for high-volume scenarios
-5. Consider batching for better performance
+1. Add trace sampling for high-volume scenarios
+2. Consider batching for better performance
