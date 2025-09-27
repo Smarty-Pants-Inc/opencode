@@ -20,198 +20,122 @@ import { GithubCommand } from "./cli/cmd/github"
 import { ExportCommand } from "./cli/cmd/export"
 import { AttachCommand } from "./cli/cmd/attach"
 
-// Langfuse integration (env-gated, graceful under Bun)
+// Langfuse integration (v4 via Node OTel only)
 try {
   const env = process.env as Record<string, string | undefined>
-  if (env.LANGFUSE_SECRET_KEY && env.LANGFUSE_PUBLIC_KEY) {
-    const isBun = typeof (globalThis as any).Bun !== "undefined"
-    if (isBun) {
+  if (env.LANGFUSE_SECRET_KEY && env.LANGFUSE_PUBLIC_KEY && typeof (globalThis as any).Bun === "undefined") {
+    let initialized = false
+    try {
+      const { NodeSDK } = await import("@opentelemetry/sdk-node")
+      const { LangfuseSpanProcessor } = await import("@langfuse/otel")
+      const sdk = new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor()] })
+      await sdk.start()
+      initialized = true
+    } catch {}
+
+    if (!initialized) {
       try {
+        const { BasicTracerProvider } = await import("@opentelemetry/sdk-trace-base")
+        const { LangfuseSpanProcessor } = await import("@langfuse/otel")
+        const provider = new BasicTracerProvider()
+        provider.addSpanProcessor(new LangfuseSpanProcessor())
+        provider.register()
+        initialized = true
+      } catch {}
+    }
+
+    if (initialized) {
+      try {
+        const { startActiveObservation, startObservation, updateActiveTrace } = await import("@langfuse/tracing")
         const { Bus } = await import("./bus")
-        const { Langfuse } = await import("langfuse")
-        const lf = new Langfuse({ publicKey: env.LANGFUSE_PUBLIC_KEY!, secretKey: env.LANGFUSE_SECRET_KEY!, baseUrl: env.LANGFUSE_BASE_URL })
 
-        const traces = new Map<string, any>()
-        const stepSpans = new Map<string, any>() // key: part.id
-        const toolSpans = new Map<string, any>() // key: callID
-        const messageSpans = new Map<string, any>() // key: messageID
+        const stepObs = new Map<string, any>()
+        const toolObs = new Map<string, any>()
 
-        function getTrace(sessionID?: string) {
-          if (sessionID) {
-            const sid = String(sessionID)
-            let t = traces.get(sid)
-            if (!t) {
-              t = lf.trace({ name: "opencode:session", sessionId: sid })
-              traces.set(sid, t)
-            }
-            return t
-          }
-          return lf.trace({ name: "opencode:orphan" })
-        }
-
-        Bus.subscribeAll((evt: any) => {
-          try {
+        Bus.subscribeAll((evt: any) =>
+          startActiveObservation(`opencode:${evt.type}`, async () => {
             const sid = evt?.properties?.info?.id ?? evt?.properties?.sessionID
-            const trace = getTrace(sid)
+            if (sid) {
+              try { updateActiveTrace({ sessionId: String(sid) }) } catch {}
+            }
             const t = evt.type as string
             const p = evt.properties as any
 
             if (t === "message.part.updated" && p?.part) {
               const part = p.part as any
               if (part.type === "step-start") {
-                const s = trace.span({ name: "step", metadata: { messageID: part.messageID } })
-                stepSpans.set(part.id, s)
+                const s = startObservation("step")
+                stepObs.set(part.id, s)
                 return
               }
               if (part.type === "step-finish") {
-                const s = stepSpans.get(part.id) ?? trace.span({ name: "step" })
-                s.event({ name: "finish", input: { tokens: part.tokens, cost: part.cost } })
+                const s = stepObs.get(part.id) ?? startObservation("step")
+                s.update({ metadata: { tokens: part.tokens, cost: part.cost } })
                 s.end()
-                stepSpans.delete(part.id)
+                stepObs.delete(part.id)
                 return
               }
               if (part.type === "tool") {
                 if (part.state.status === "pending" || part.state.status === "running") {
-                  const s = trace.span({ name: `tool:${part.tool}`, input: part.state.input, metadata: { callID: part.callID } })
-                  toolSpans.set(part.callID, s)
+                  const s = startObservation(`tool:${part.tool}`, { input: part.state.input, metadata: { callID: part.callID } })
+                  toolObs.set(part.callID, s)
                   return
                 }
                 if (part.state.status === "completed") {
-                  const s = toolSpans.get(part.callID) ?? trace.span({ name: `tool:${part.tool}` })
-                  s.event({ name: "result", input: { input: part.state.input, output: part.state.output, meta: part.metadata } })
+                  const s = toolObs.get(part.callID) ?? startObservation(`tool:${part.tool}`)
+                  s.update({ input: { input: part.state.input, output: part.state.output, meta: part.metadata } })
                   s.end()
-                  toolSpans.delete(part.callID)
+                  toolObs.delete(part.callID)
                   return
                 }
                 if (part.state.status === "error") {
-                  const s = toolSpans.get(part.callID) ?? trace.span({ name: `tool:${part.tool}` })
-                  s.event({ name: "error", input: { input: part.state.input, error: part.state.error, meta: part.metadata } })
+                  const s = toolObs.get(part.callID) ?? startObservation(`tool:${part.tool}`)
+                  s.update({ input: { input: part.state.input, error: part.state.error, meta: part.metadata } })
                   s.end()
-                  toolSpans.delete(part.callID)
+                  toolObs.delete(part.callID)
                   return
                 }
               }
               if (part.type === "text") {
-                const s = trace.span({ name: "text", metadata: { messageID: part.messageID } })
-                s.event({ name: "chunk", input: { text: part.text } })
+                const s = startObservation("text", { input: { text: part.text } })
                 s.end()
                 return
               }
               if (part.type === "reasoning") {
-                const s = trace.span({ name: "reasoning", metadata: { messageID: part.messageID } })
-                s.event({ name: "chunk", input: { text: part.text, meta: part.metadata } })
+                const s = startObservation("reasoning", { input: { text: part.text }, metadata: part.metadata })
                 s.end()
                 return
               }
               if (part.type === "file") {
-                const s = trace.span({ name: "file", metadata: { messageID: part.messageID } })
-                s.event({ name: "attached", input: { mime: part.mime, filename: part.filename, url: part.url } })
+                const s = startObservation("file", { input: { mime: part.mime, filename: part.filename, url: part.url } })
                 s.end()
                 return
               }
-              // snapshot, patch, agent
-              const s = trace.span({ name: part.type, metadata: { messageID: part.messageID } })
-              s.event({ name: "data", input: part })
+              const s = startObservation(part.type, { input: part })
               s.end()
               return
             }
 
             if (t === "message.updated" && p?.info) {
               const info = p.info as any
-              const key = info.id
               if (info.role === "assistant") {
-                const s = trace.span({ name: "assistant", metadata: { providerID: info.providerID, modelID: info.modelID } })
-                s.event({ name: "tokens", input: info.tokens })
-                s.event({ name: "cost", input: info.cost })
+                const s = startObservation("assistant", { metadata: { providerID: info.providerID, modelID: info.modelID } })
+                s.update({ input: { tokens: info.tokens, cost: info.cost } })
                 s.end()
-                messageSpans.set(key, s)
                 return
               }
               if (info.role === "user") {
-                const s = trace.span({ name: "user" })
-                s.event({ name: "created", input: { time: info.time?.created } })
+                const s = startObservation("user", { input: { time: info.time?.created } })
                 s.end()
-                messageSpans.set(key, s)
                 return
               }
             }
 
-            // default: record generic event
-            const s = trace.span({ name: t })
-            s.event({ name: "data", input: p })
+            const s = startObservation(t, { input: p })
             s.end()
-          } catch {}
-        })
-
-        // Wrap global fetch to instrument outgoing HTTP requests (exclude Langfuse)
-        try {
-          const originalFetch = globalThis.fetch
-          globalThis.fetch = (async (...args: any[]) => {
-            const input = args[0]
-            const init = args[1] || {}
-            const url = typeof input === "string" ? input : input?.url
-            if (typeof url === "string" && url.includes("langfuse")) {
-              return await (originalFetch as any)(...args)
-            }
-            const trace = getTrace()
-            const s = trace.span({ name: "http.request", metadata: { url } })
-            try {
-              s.event({ name: "request", input: { method: init?.method || (typeof input !== "string" ? input?.method : undefined) } })
-              const res = await (originalFetch as any)(...args)
-              s.event({ name: "response", input: { status: res?.status } })
-              s.end()
-              return res
-            } catch (e) {
-              s.event({ name: "error", input: { error: String(e) } })
-              s.end()
-              throw e
-            }
-          }) as any
-        } catch {}
-
-        const flush = async () => { try { await lf.flushAsync() } catch {} }
-        process.on("beforeExit", flush)
-        process.on("exit", flush)
+          }),
+        )
       } catch {}
-    } else {
-      let initialized = false
-      try {
-        const { NodeSDK } = await import("@opentelemetry/sdk-node")
-        const { LangfuseSpanProcessor } = await import("@langfuse/otel")
-        const sdk = new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor({ exportMode: "immediate" })] })
-        await sdk.start()
-        initialized = true
-      } catch {}
-
-      if (!initialized) {
-        try {
-          const { BasicTracerProvider } = await import("@opentelemetry/sdk-trace-base")
-          const { LangfuseSpanProcessor } = await import("@langfuse/otel")
-          const provider = new BasicTracerProvider()
-          provider.addSpanProcessor(new LangfuseSpanProcessor({ exportMode: "immediate" }))
-          provider.register()
-          initialized = true
-        } catch {}
-      }
-
-      if (initialized) {
-        try {
-          const { startActiveObservation, updateActiveTrace } = await import("@langfuse/tracing")
-          const { Bus } = await import("./bus")
-          Bus.subscribeAll((evt: any) =>
-            startActiveObservation(`opencode:${evt.type}`, async (span: any) => {
-              const sid = evt?.properties?.info?.id ?? evt?.properties?.sessionID
-              if (sid) {
-                try { updateActiveTrace({ sessionId: String(sid) }) } catch {}
-              }
-              span.update({
-                input: evt.properties,
-                metadata: { sessionID: sid },
-              })
-            }),
-          )
-        } catch {}
-      }
     }
   }
 } catch {}
