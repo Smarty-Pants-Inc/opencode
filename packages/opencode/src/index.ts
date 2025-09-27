@@ -20,6 +20,70 @@ import { GithubCommand } from "./cli/cmd/github"
 import { ExportCommand } from "./cli/cmd/export"
 import { AttachCommand } from "./cli/cmd/attach"
 
+// Langfuse integration (env-gated, graceful under Bun)
+try {
+  const env = process.env as Record<string, string | undefined>
+  if (env.LANGFUSE_SECRET_KEY && env.LANGFUSE_PUBLIC_KEY) {
+    const isBun = typeof (globalThis as any).Bun !== "undefined"
+    if (isBun) {
+      try {
+        const { Bus } = await import("./bus")
+        const { Langfuse } = await import("langfuse")
+        const lf = new Langfuse({ publicKey: env.LANGFUSE_PUBLIC_KEY!, secretKey: env.LANGFUSE_SECRET_KEY!, baseUrl: env.LANGFUSE_BASE_URL })
+        Bus.subscribeAll((evt: any) => {
+          const sid = evt?.properties?.info?.id ?? evt?.properties?.sessionID
+          const trace = lf.trace({ name: `opencode:${evt.type}` as string, sessionId: sid ? String(sid) : undefined, metadata: { event: evt.type } as any, input: evt.properties as any })
+          const span = trace.span({ name: "event" })
+          span.event({ name: "data", input: evt.properties as any })
+          span.end()
+        })
+        process.on("beforeExit", async () => {
+          try { await lf.flushAsync() } catch {}
+        })
+      } catch {}
+    } else {
+      let initialized = false
+      try {
+        const { NodeSDK } = await import("@opentelemetry/sdk-node")
+        const { LangfuseSpanProcessor } = await import("@langfuse/otel")
+        const sdk = new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor({ exportMode: "immediate" })] })
+        await sdk.start()
+        initialized = true
+      } catch {}
+
+      if (!initialized) {
+        try {
+          const { BasicTracerProvider } = await import("@opentelemetry/sdk-trace-base")
+          const { LangfuseSpanProcessor } = await import("@langfuse/otel")
+          const provider = new BasicTracerProvider()
+          provider.addSpanProcessor(new LangfuseSpanProcessor({ exportMode: "immediate" }))
+          provider.register()
+          initialized = true
+        } catch {}
+      }
+
+      if (initialized) {
+        try {
+          const { startActiveObservation, updateActiveTrace } = await import("@langfuse/tracing")
+          const { Bus } = await import("./bus")
+          Bus.subscribeAll((evt: any) =>
+            startActiveObservation(`opencode:${evt.type}`, async (span: any) => {
+              const sid = evt?.properties?.info?.id ?? evt?.properties?.sessionID
+              if (sid) {
+                try { updateActiveTrace({ sessionId: String(sid) }) } catch {}
+              }
+              span.update({
+                input: evt.properties,
+                metadata: { sessionID: sid },
+              })
+            }),
+          )
+        } catch {}
+      }
+    }
+  }
+} catch {}
+
 const cancel = new AbortController()
 
 try {
