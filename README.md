@@ -74,6 +74,7 @@ This fork adds production-oriented observability, reliability, and UX improvemen
   - Reasonable defaults for secrets/env; clean shutdown for the sidecar (OTel `sdk.shutdown()`).
 
 See commit history for detailed changes:
+
 - observe(sidecar): session-rooted traces, output aggregation, reasoning gating
 - server: sidecar autostart + SSE feed; port detection fixes
 - tui: status bar hyperlink, `/trace` command, clean exit behavior
