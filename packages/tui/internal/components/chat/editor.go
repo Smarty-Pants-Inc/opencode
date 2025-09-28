@@ -72,7 +72,10 @@ func (m *editorComponent) shouldAnimateSpinner() bool {
 		return true
 	}
 	if m.app.CurrentPermission.ID != "" {
-		return true
+		// Only animate if the permission is for the active session (or its parent)
+		if m.app.CurrentPermission.SessionID == m.app.Session.ID || (m.app.Session.ParentID != "" && m.app.CurrentPermission.SessionID == m.app.Session.ParentID) {
+			return true
+		}
 	}
 	if m.interruptKeyInDebounce {
 		return true

@@ -136,14 +136,32 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
 	go func() {
-		stream := httpClient.Event.ListStreaming(ctx, opencode.EventListParams{})
+		// Stream events, scoping by project directory when available, with fallback
+		params := opencode.EventListParams{}
+		if project != nil && project.Worktree != "" {
+			params.Directory = opencode.F(project.Worktree)
+		}
+		stream := httpClient.Event.ListStreaming(ctx, params)
 		for stream.Next() {
 			evt := stream.Current().AsUnion()
 			program.Send(evt)
 		}
 		if err := stream.Err(); err != nil {
-			slog.Error("Error streaming events", "error", err)
-			program.Send(err)
+			slog.Error("Error streaming events", "scoped", params.Directory.Value != "", "error", err)
+			// Fallback to unscoped stream if scoped failed
+			if params.Directory.Value != "" {
+				stream = httpClient.Event.ListStreaming(ctx, opencode.EventListParams{})
+				for stream.Next() {
+					evt := stream.Current().AsUnion()
+					program.Send(evt)
+				}
+				if err := stream.Err(); err != nil {
+					slog.Error("Error streaming events (fallback)", "error", err)
+					program.Send(err)
+				}
+			} else {
+				program.Send(err)
+			}
 		}
 	}()
 
