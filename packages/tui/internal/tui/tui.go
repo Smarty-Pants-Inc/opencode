@@ -635,21 +635,35 @@ func (a Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case opencode.EventListResponseEventPermissionUpdated:
 		slog.Debug("permission updated", "session", msg.Properties.SessionID, "permission", msg.Properties.ID)
-		a.app.Permissions = append(a.app.Permissions, msg.Properties)
-		a.app.CurrentPermission = a.app.Permissions[0]
-		a.editor.Blur()
-	case opencode.EventListResponseEventPermissionReplied:
-		index := slices.IndexFunc(a.app.Permissions, func(p opencode.Permission) bool {
-			return p.ID == msg.Properties.PermissionID
-		})
-		if index > -1 {
-			a.app.Permissions = append(a.app.Permissions[:index], a.app.Permissions[index+1:]...)
-		}
-		if a.app.CurrentPermission.ID == msg.Properties.PermissionID {
-			if len(a.app.Permissions) > 0 {
-				a.app.CurrentPermission = a.app.Permissions[0]
+		// Only surface permission prompts for the active session (or its parent)
+		if msg.Properties.SessionID == a.app.Session.ID || (a.app.Session.ParentID != "" && msg.Properties.SessionID == a.app.Session.ParentID) {
+			// De-duplicate by permission ID; update in place if exists
+			idx := slices.IndexFunc(a.app.Permissions, func(p opencode.Permission) bool { return p.ID == msg.Properties.ID })
+			if idx > -1 {
+				a.app.Permissions[idx] = msg.Properties
 			} else {
-				a.app.CurrentPermission = opencode.Permission{}
+				a.app.Permissions = append(a.app.Permissions, msg.Properties)
+			}
+			if a.app.CurrentPermission.ID == "" {
+				a.app.CurrentPermission = a.app.Permissions[0]
+			}
+			a.editor.Blur()
+		}
+	case opencode.EventListResponseEventPermissionReplied:
+		// Only update local queue if it pertains to our active session family
+		if msg.Properties.SessionID == a.app.Session.ID || (a.app.Session.ParentID != "" && msg.Properties.SessionID == a.app.Session.ParentID) {
+			index := slices.IndexFunc(a.app.Permissions, func(p opencode.Permission) bool {
+				return p.ID == msg.Properties.PermissionID
+			})
+			if index > -1 {
+				a.app.Permissions = append(a.app.Permissions[:index], a.app.Permissions[index+1:]...)
+			}
+			if a.app.CurrentPermission.ID == msg.Properties.PermissionID {
+				if len(a.app.Permissions) > 0 {
+					a.app.CurrentPermission = a.app.Permissions[0]
+				} else {
+					a.app.CurrentPermission = opencode.Permission{}
+				}
 			}
 		}
 	case opencode.EventListResponseEventSessionError:
@@ -691,6 +705,21 @@ func (a Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		a.app.Session = msg
 		a.app.Messages = messages
+
+		// Cleanup permission queue to only include entries for the active session family
+		filtered := make([]opencode.Permission, 0, len(a.app.Permissions))
+		for _, p := range a.app.Permissions {
+			if p.SessionID == a.app.Session.ID || (a.app.Session.ParentID != "" && p.SessionID == a.app.Session.ParentID) {
+				filtered = append(filtered, p)
+			}
+		}
+		a.app.Permissions = filtered
+		if len(a.app.Permissions) > 0 {
+			a.app.CurrentPermission = a.app.Permissions[0]
+		} else {
+			a.app.CurrentPermission = opencode.Permission{}
+		}
+
 		cmds = append(cmds, util.CmdHandler(app.SessionLoadedMsg{}))
 		return a, tea.Batch(cmds...)
 	case app.SessionCreatedMsg:
