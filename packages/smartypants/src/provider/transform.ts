@@ -62,6 +62,25 @@ export namespace ProviderTransform {
     return msgs
   }
 
+  function sanitizeMessages(msgs: ModelMessage[]): ModelMessage[] {
+    const out: ModelMessage[] = []
+    for (const msg of msgs) {
+      const c: any = (msg as any).content
+      if (Array.isArray(c)) {
+        const cleaned = c.filter((p: any) => p && p.type !== "reasoning")
+        if (cleaned.length > 0) {
+          ;(msg as any).content = cleaned
+          out.push(msg)
+        }
+      } else if (typeof c === "string") {
+        if (c.trim().length > 0) out.push(msg)
+      } else {
+        out.push(msg)
+      }
+    }
+    return out
+  }
+
   export function message(msgs: ModelMessage[], providerID: string, modelID: string) {
     if (modelID.includes("claude")) {
       msgs = normalizeToolCallIds(msgs)
@@ -69,7 +88,7 @@ export namespace ProviderTransform {
     if (providerID === "anthropic" || modelID.includes("anthropic") || modelID.includes("claude")) {
       msgs = applyCaching(msgs, providerID)
     }
-
+    msgs = sanitizeMessages(msgs)
     return msgs
   }
 
