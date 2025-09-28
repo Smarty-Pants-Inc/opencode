@@ -555,13 +555,7 @@ export namespace MessageV2 {
                 ]
             }
             if (part.type === "reasoning") {
-              return [
-                {
-                  type: "reasoning",
-                  text: part.text,
-                  providerMetadata: part.metadata,
-                },
-              ]
+              return []
             }
 
             return []
