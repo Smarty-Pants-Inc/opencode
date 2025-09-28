@@ -61,6 +61,38 @@ type editorComponent struct {
 	currentText            string // Store current text when navigating history
 	pasteCounter           int
 	reverted               bool
+	spinnerActive          bool
+}
+
+func (m *editorComponent) shouldAnimateSpinner() bool {
+	if m == nil || m.app == nil {
+		return false
+	}
+	if m.app.IsBusy() {
+		return true
+	}
+	if m.app.CurrentPermission.ID != "" {
+		// Only animate if the permission is for the active session (or its parent)
+		if m.app.CurrentPermission.SessionID == m.app.Session.ID || (m.app.Session.ParentID != "" && m.app.CurrentPermission.SessionID == m.app.Session.ParentID) {
+			return true
+		}
+	}
+	if m.interruptKeyInDebounce {
+		return true
+	}
+	return false
+}
+
+func (m *editorComponent) ensureSpinnerTick() tea.Cmd {
+	if !m.shouldAnimateSpinner() {
+		m.spinnerActive = false
+		return nil
+	}
+	if m.spinnerActive {
+		return nil
+	}
+	m.spinnerActive = true
+	return m.spinner.Tick
 }
 
 func (m *editorComponent) Init() tea.Cmd {

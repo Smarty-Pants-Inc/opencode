@@ -257,11 +257,17 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.renderView())
 		}
 	case opencode.EventListResponseEventPermissionUpdated:
-		m.tail = true
-		return m, m.renderView()
+		if msg.Properties.SessionID == m.app.Session.ID || (m.app.Session.ParentID != "" && msg.Properties.SessionID == m.app.Session.ParentID) {
+			m.tail = true
+			return m, m.renderView()
+		}
+		return m, nil
 	case opencode.EventListResponseEventPermissionReplied:
-		m.tail = true
-		return m, m.renderView()
+		if msg.Properties.SessionID == m.app.Session.ID || (m.app.Session.ParentID != "" && msg.Properties.SessionID == m.app.Session.ParentID) {
+			m.tail = true
+			return m, m.renderView()
+		}
+		return m, nil
 	case renderCompleteMsg:
 		m.partCount = msg.partCount
 		m.lineCount = msg.lineCount
