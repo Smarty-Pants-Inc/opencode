@@ -30,6 +30,8 @@ import { SessionCompaction } from "../session/compaction"
 import { SessionRevert } from "../session/revert"
 import { lazy } from "../util/lazy"
 import { InstanceBootstrap } from "../project/bootstrap"
+import path from "path"
+import fs from "fs/promises"
 
 const ERRORS = {
   400: {
@@ -1139,6 +1141,30 @@ export namespace Server {
               break
           }
 
+          // Persist Langfuse trace URL for current session (no API shape changes)
+          try {
+            if (
+              service === "langfuse.sidecar" &&
+              message === "generation finalized" &&
+              typeof extra?.["url"] === "string" &&
+              typeof extra?.["sessionID"] === "string"
+            ) {
+              const dir = path.join(Global.Path.state, "observability", "langfuse")
+              await fs.mkdir(dir, { recursive: true })
+              const payload = {
+                sessionID: extra["sessionID"],
+                traceId: extra["traceId"] ?? null,
+                url: extra["url"],
+                messageID: extra["messageID"] ?? null,
+                reason: extra["reason"] ?? null,
+                updated: Date.now(),
+              }
+              await Bun.write(path.join(dir, extra["sessionID"] + ".json"), JSON.stringify(payload, null, 2))
+            }
+          } catch (e) {
+            logger.warn("failed to persist langfuse trace url", { error: String(e) })
+          }
+
           return c.json(true)
         },
       )
@@ -1444,7 +1470,7 @@ export namespace Server {
       idleTimeout: 0,
       fetch: App().fetch,
     })
-    ensureLangfuseSidecar({ directory: Global.Path.state, port: opts.port }).catch(() => {})
+    const __p:any = (server as any).port; const __port:number = typeof __p === "number" && __p > 0 ? __p : opts.port; ensureLangfuseSidecar({ directory: Global.Path.state, port: __port }).catch(() => {})
     return server
   }
 }

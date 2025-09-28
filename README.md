@@ -48,6 +48,37 @@ OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bas
 XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
 ```
 
+### Smarty Pants Fork Enhancements
+
+This fork adds production-oriented observability, reliability, and UX improvements tailored for Smarty Pants. Highlights:
+
+- Langfuse Observability (Sidecar v4): End-to-end tracing wired through a lightweight Node sidecar that listens to the server’s SSE stream and emits Langfuse GENERATION/TOOL/EVENT spans.
+  - Server auto-starts the sidecar (env-gated via `OPENCODE_OBSERVE=langfuse`), and exposes an `/event` SSE feed.
+  - Session-rooted traces: One root per session; per-assistant message generations are nested for clarity.
+  - Output batching: Streaming deltas are aggregated and stored as a single generation output (no word-per-span noise).
+  - Reasoning only when present: Emits a single reasoning event only if the model returns reasoning/tokens.
+  - Canonical URLs: Finalized trace URL logged back to the server for downstream UIs.
+
+- TUI Integration:
+  - Status bar shows a Langfuse hyperlink; right-aligned near the tab strip with padding.
+  - New “/trace” slash command opens the latest trace URL directly from the TUI.
+  - Exit reliability improvements: fixes to ensure the UI and background goroutines shut down cleanly.
+
+- Server/CLI Reliability:
+  - Sidecar port fix: sidecar connects to the server’s actual bound port (works with `--port 0`).
+  - `/event` SSE stream logs connection/disconnect and publishes bus events.
+  - `run` command prints final assistant text to stdout and exits with explicit status.
+
+- Dev Experience & Guardrails:
+  - Observability is opt-in via `OPENCODE_OBSERVE` gates (`langfuse` or `langfuse-app`).
+  - Reasonable defaults for secrets/env; clean shutdown for the sidecar (OTel `sdk.shutdown()`).
+
+See commit history for detailed changes:
+- observe(sidecar): session-rooted traces, output aggregation, reasoning gating
+- server: sidecar autostart + SSE feed; port detection fixes
+- tui: status bar hyperlink, `/trace` command, clean exit behavior
+- cli: robust `run` printing + explicit exit codes
+
 ### Documentation
 
 For more info on how to configure opencode [**head over to our docs**](https://opencode.ai/docs).
