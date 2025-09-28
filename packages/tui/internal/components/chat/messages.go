@@ -103,6 +103,41 @@ type ToggleToolDetailsMsg struct{}
 type ToggleThinkingBlocksMsg struct{}
 type shimmerTickMsg struct{}
 
+func (m *messagesComponent) shouldAnimateShimmer() bool {
+	if m == nil || m.app == nil {
+		return false
+	}
+	// Only consider the latest assistant message for shimmer eligibility
+	for i := len(m.app.Messages) - 1; i >= 0; i-- {
+		msg := m.app.Messages[i]
+		if assistant, ok := msg.Info.(opencode.AssistantMessage); ok {
+			// If the last assistant ended with an abort error, do not animate
+			switch assistant.Error.AsUnion().(type) {
+			case opencode.MessageAbortedError:
+				return false
+			}
+			// If the latest assistant message is still incomplete, animate
+			if assistant.Time.Completed == 0 {
+				return true
+			}
+			// Otherwise, animate only if a tool part on this same message is pending
+			for _, p := range msg.Parts {
+				if tp, ok := p.(opencode.ToolPart); ok {
+					if tp.State.Status == opencode.ToolPartStateStatusPending {
+						return true
+					}
+				}
+			}
+			return false
+		}
+	}
+	// If a permission prompt is in-flight for this session, keep animating
+	if m.app.CurrentPermission.ID != "" && m.app.CurrentPermission.SessionID == m.app.Session.ID {
+		return true
+	}
+	return false
+}
+
 func (m *messagesComponent) Init() tea.Cmd {
 	return tea.Batch(m.viewport.Init())
 }
@@ -111,7 +146,7 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case shimmerTickMsg:
-		if !m.app.HasAnimatingWork() {
+		if !m.shouldAnimateShimmer() {
 			m.animating = false
 			return m, nil
 		}
@@ -287,8 +322,8 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.renderView())
 		}
 
-		// Start shimmer ticks if any assistant/tool is in-flight
-		if !m.animating && m.app.HasAnimatingWork() {
+		// Start shimmer ticks only for the latest in-flight assistant/tool
+		if !m.animating && m.shouldAnimateShimmer() {
 			m.animating = true
 			cmds = append(cmds, tea.Tick(90*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }))
 		}
