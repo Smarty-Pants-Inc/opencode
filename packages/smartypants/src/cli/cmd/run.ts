@@ -166,7 +166,7 @@ export const RunCommand = cmd({
 
       let text = ""
 
-      let printed = false;
+      let printed = false
 
       Bus.subscribe(MessageV2.Event.PartUpdated, async (evt) => {
         if (evt.properties.part.sessionID !== session.id) return
@@ -204,7 +204,7 @@ export const RunCommand = cmd({
             UI.empty()
             UI.println(UI.markdown(text))
             UI.empty()
-            printed = true;
+            printed = true
             text = ""
             return
           }
@@ -254,15 +254,14 @@ export const RunCommand = cmd({
             text: message,
           },
         ],
-
       })
 
       if (args.format === "default") {
-        const lastTextPart = (result.parts as any[]).filter((x:any) => x.type === "text").at(-1) as any;
-        if (!printed && lastTextPart && typeof lastTextPart.text === "string" && lastTextPart.text.trim() !== "" ) {
-          UI.empty();
-          UI.println(UI.markdown(lastTextPart.text));
-          UI.empty();
+        const lastTextPart = (result.parts as any[]).filter((x: any) => x.type === "text").at(-1) as any
+        if (!printed && lastTextPart && typeof lastTextPart.text === "string" && lastTextPart.text.trim() !== "") {
+          UI.empty()
+          UI.println(UI.markdown(lastTextPart.text))
+          UI.empty()
         }
       }
 

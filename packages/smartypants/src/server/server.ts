@@ -1470,7 +1470,9 @@ export namespace Server {
       idleTimeout: 0,
       fetch: App().fetch,
     })
-    const __p:any = (server as any).port; const __port:number = typeof __p === "number" && __p > 0 ? __p : opts.port; ensureLangfuseSidecar({ directory: Global.Path.state, port: __port }).catch(() => {})
+    const __p: any = (server as any).port
+    const __port: number = typeof __p === "number" && __p > 0 ? __p : opts.port
+    ensureLangfuseSidecar({ directory: Global.Path.state, port: __port }).catch(() => {})
     return server
   }
 }
