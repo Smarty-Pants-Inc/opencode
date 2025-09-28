@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -1159,6 +1161,63 @@ func (a Model) executeCommand(command commands.Command) (tea.Model, tea.Cmd) {
 		util.CmdHandler(commands.CommandExecutedMsg(command)),
 	}
 	switch command.Name {
+	case commands.TraceOpenCommand:
+		{
+			stateHome := os.Getenv("XDG_STATE_HOME")
+			if stateHome == "" {
+				home, _ := os.UserHomeDir()
+				stateHome = filepath.Join(home, ".local", "state")
+			}
+			dir := filepath.Join(stateHome, "opencode", "observability", "langfuse")
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				return a, toast.NewErrorToast("Langfuse state not found: " + dir)
+			}
+			var latestPath string
+			var latestTime time.Time
+			for _, e := range entries {
+				if e.IsDir() {
+					continue
+				}
+				if !strings.HasSuffix(e.Name(), ".json") {
+					continue
+				}
+				info, err := e.Info()
+				if err != nil {
+					continue
+				}
+				if info.ModTime().After(latestTime) {
+					latestTime = info.ModTime()
+					latestPath = filepath.Join(dir, e.Name())
+				}
+			}
+			if latestPath == "" {
+				return a, toast.NewInfoToast("No Langfuse traces yet")
+			}
+			b, err := os.ReadFile(latestPath)
+			if err != nil {
+				return a, toast.NewErrorToast("Failed to read trace file")
+			}
+			var payload struct { URL string `json:"url"` }
+			json.Unmarshal(b, &payload)
+			if payload.URL == "" {
+				return a, toast.NewErrorToast("No URL in trace file")
+			}
+			var openCmd *exec.Cmd
+			switch runtime.GOOS {
+			case "darwin":
+				openCmd = exec.Command("open", payload.URL)
+			case "linux":
+				openCmd = exec.Command("xdg-open", payload.URL)
+			case "windows":
+				openCmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", payload.URL)
+			default:
+				openCmd = exec.Command("open", payload.URL)
+			}
+			_ = openCmd.Start()
+			cmds = append(cmds, toast.NewInfoToast("Opening Langfuse trace"))
+		}
+
 	case commands.AppHelpCommand:
 		helpDialog := dialog.NewHelpDialog(a.app)
 		a.modal = helpDialog

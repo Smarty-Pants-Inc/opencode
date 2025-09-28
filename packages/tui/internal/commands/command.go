@@ -159,6 +159,7 @@ const (
 	MessagesCopyCommand             CommandName = "messages_copy"
 	MessagesUndoCommand             CommandName = "messages_undo"
 	MessagesRedoCommand             CommandName = "messages_redo"
+	TraceOpenCommand               CommandName = "trace_open"
 	AppExitCommand                  CommandName = "app_exit"
 )
 
@@ -386,6 +387,11 @@ func LoadFromConfig(config *opencode.Config, customCommands []opencode.Command) 
 			Trigger:     []string{"redo"},
 		},
 		{
+            Name:        TraceOpenCommand,
+            Description: "open latest Langfuse trace",
+            Trigger:     []string{"trace"},
+        },
+        {
 			Name:        AppExitCommand,
 			Description: "exit the app",
 			Keybindings: parseBindings("ctrl+c", "<leader>q"),

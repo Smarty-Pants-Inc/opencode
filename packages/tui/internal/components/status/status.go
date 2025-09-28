@@ -1,6 +1,7 @@
 package status
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/lipgloss/v2/compat"
 	"github.com/fsnotify/fsnotify"
+	opencode "github.com/sst/opencode-sdk-go"
 	"github.com/sst/opencode/internal/app"
 	"github.com/sst/opencode/internal/commands"
 	"github.com/sst/opencode/internal/layout"
@@ -37,9 +39,11 @@ type statusComponent struct {
 	watcher    *fsnotify.Watcher
 	done       chan struct{}
 	lastUpdate time.Time
+	lfURL      string
 }
 
 func (m *statusComponent) Init() tea.Cmd {
+	m.refreshLangfuseURL()
 	return m.startGitWatcher()
 }
 
@@ -54,6 +58,25 @@ func (m *statusComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Continue watching for changes (persistent watcher)
 		return m, m.watchForGitChanges()
+	case opencode.EventListResponseEventMessageUpdated:
+		if m.app.Session != nil && msg.Properties.Info.SessionID == m.app.Session.ID {
+			m.refreshLangfuseURL()
+		}
+		return m, nil
+	case opencode.EventListResponseEventSessionUpdated:
+		if m.app.Session != nil && msg.Properties.Info.ID == m.app.Session.ID {
+			m.refreshLangfuseURL()
+		}
+		return m, nil
+	case app.SessionSelectedMsg:
+		m.refreshLangfuseURL()
+		return m, nil
+	case app.SessionCreatedMsg:
+		m.refreshLangfuseURL()
+		return m, nil
+	case app.SessionClearedMsg:
+		m.lfURL = ""
+		return m, nil
 	}
 	return m, nil
 }
@@ -159,15 +182,28 @@ func (m *statusComponent) View() string {
 		Background(t.BackgroundPanel()).
 		Foreground(t.TextMuted())
 	agent = faintStyle.Render(key+" ") + agent
-	modeWidth := lipgloss.Width(agent)
+	modeWidth := 0
 
-	availableWidth := m.width - logoWidth - modeWidth
+	// availableWidth computed after right segment
 	branchSuffix := ""
 	if m.branch != "" {
 		branchSuffix = ":" + m.branch
 	}
 
+	// Build right segment: Langfuse link (2 spaces) next to agent
+	lfLink := ""
+	if m.lfURL != "" && m.app.Session != nil && m.app.Session.ID != "" {
+		lfLink = styles.NewStyle().Background(t.BackgroundPanel()).Render("  " + osc8(m.lfURL, "Langfuse") + "  ")
+	}
+	right := lfLink + agent
+
+	modeWidth = lipgloss.Width(right)
+	availableWidth := m.width - logoWidth - modeWidth
+
 	maxCwdWidth := availableWidth - lipgloss.Width(branchSuffix)
+	if maxCwdWidth < 10 {
+		maxCwdWidth = 10
+	}
 	cwdDisplay := m.collapsePath(m.cwd, maxCwdWidth)
 
 	if m.branch != "" && availableWidth > lipgloss.Width(cwdDisplay)+lipgloss.Width(branchSuffix) {
@@ -193,12 +229,39 @@ func (m *statusComponent) View() string {
 			View: logo + cwd,
 		},
 		layout.FlexItem{
-			View: agent,
+			View: right,
 		},
 	)
 
 	blank := styles.NewStyle().Background(t.Background()).Width(m.width).Render("")
 	return blank + "\n" + status
+}
+
+func osc8(uri, text string) string {
+	// OSC 8 hyperlink: ESC ] 8 ; ; URI ESC \ TEXT ESC ] 8 ; ; ESC \
+	return "\x1b]8;;" + uri + "\x1b\\" + text + "\x1b]8;;\x1b\\"
+}
+
+func (m *statusComponent) refreshLangfuseURL() {
+	if m.app.Session == nil || m.app.Session.ID == "" {
+		m.lfURL = ""
+		return
+	}
+	base := filepath.Dir(m.app.StatePath) // path.State
+	file := filepath.Join(base, "observability", "langfuse", m.app.Session.ID+".json")
+	b, err := os.ReadFile(file)
+	if err != nil {
+		m.lfURL = ""
+		return
+	}
+	var payload struct {
+		URL string `json:"url"`
+	}
+	if err := json.Unmarshal(b, &payload); err != nil {
+		m.lfURL = ""
+		return
+	}
+	m.lfURL = payload.URL
 }
 
 func (m *statusComponent) startGitWatcher() tea.Cmd {

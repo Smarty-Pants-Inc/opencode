@@ -154,6 +154,7 @@ func main() {
 		sig := <-sigChan
 		slog.Info("Received signal, shutting down gracefully", "signal", sig)
 		tuiModel.Cleanup()
+		cancel()
 		program.Quit()
 	}()
 
@@ -164,5 +165,7 @@ func main() {
 	}
 
 	tuiModel.Cleanup()
+	cancel()
 	slog.Info("TUI exited", "result", result)
+	os.Exit(0)
 }

@@ -111,7 +111,7 @@ export const TuiCommand = cmd({
 
         let cmd = [] as string[]
         const tui = Bun.embeddedFiles.find((item) => (item as File).name.includes("tui")) as File
-        if (tui) {
+        if (tui && !Installation.isDev()) {
           let binaryName = tui.name
           if (process.platform === "win32" && !binaryName.endsWith(".exe")) {
             binaryName += ".exe"
@@ -124,7 +124,7 @@ export const TuiCommand = cmd({
           }
           cmd = [binary]
         }
-        if (!tui) {
+        if (!tui || Installation.isDev()) {
           const dir = Bun.fileURLToPath(new URL("../../../../tui/cmd/smartypants", import.meta.url))
           let binaryName = `./dist/tui${process.platform === "win32" ? ".exe" : ""}`
           await $`go build -o ${binaryName} ./main.go`.cwd(dir)
@@ -179,8 +179,9 @@ export const TuiCommand = cmd({
             .catch(() => {})
         })()
 
-        await proc.exited
+        const code = await proc.exited
         server.stop()
+        process.exit(typeof code === "number" ? code : 0)
 
         return "done"
       })
