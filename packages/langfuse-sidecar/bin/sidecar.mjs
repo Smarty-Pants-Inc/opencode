@@ -143,7 +143,11 @@ async function maybeFinalize(messageID, reason) {
     try {
       const root = rootBySession.get(g.sessionID)
       const inputText = userBySession.get(g.sessionID)?.text || ""
-      if (root) root.update({ input: inputText ? { text: sanitizeText(inputText) } : undefined, output: sanitizeText(g.out || "") })
+      if (root)
+        root.update({
+          input: inputText ? { text: sanitizeText(inputText) } : undefined,
+          output: sanitizeText(g.out || ""),
+        })
     } catch {}
 
     g.obs.end()
@@ -351,7 +355,13 @@ async function connectSSE(url) {
 }
 
 await log("info", "sidecar starting", { eventUrl })
-try { await connectSSE(eventUrl); try { await sdk.shutdown() } catch {} ; process.exit(0) } catch (e) {
+try {
+  await connectSSE(eventUrl)
+  try {
+    await sdk.shutdown()
+  } catch {}
+  process.exit(0)
+} catch (e) {
   await log("error", "sidecar crashed", { error: String(e) })
   process.exit(1)
 }
