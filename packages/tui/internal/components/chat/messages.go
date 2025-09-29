@@ -224,6 +224,9 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Clear cache on resize since width affects rendering
 		if m.width != effectiveWidth {
 			m.cache.Clear()
+			m.indexDirty = true
+			m.streamingBlockIdx = -1
+			m.cachedBlocks = nil
 		}
 		m.width = effectiveWidth
 		m.height = msg.Height - 7
@@ -240,6 +243,9 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case dialog.ThemeSelectedMsg:
 		m.cache.Clear()
+		m.indexDirty = true
+		m.streamingBlockIdx = -1
+		m.cachedBlocks = nil
 		m.loading = true
 		return m, m.renderView()
 	case ToggleToolDetailsMsg:
@@ -253,15 +259,22 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case app.SessionLoadedMsg:
 		m.tail = true
 		m.loading = true
+		m.indexDirty = true
+		m.streamingBlockIdx = -1
+		m.cachedBlocks = nil
 		return m, m.renderView()
 	case app.SessionClearedMsg:
 		m.cache.Clear()
+		m.streamingBlockIdx = -1
+		m.cachedBlocks = nil
 		m.tail = true
 		m.loading = true
 		return m, m.renderView()
 	case app.SessionUnrevertedMsg:
 		if msg.Session.ID == m.app.Session.ID {
 			m.cache.Clear()
+			m.streamingBlockIdx = -1
+			m.cachedBlocks = nil
 			m.tail = true
 			return m, m.renderView()
 		}
@@ -279,12 +292,16 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Clear cache only if switching between different session families
 		if currentParent != targetParent {
 			m.cache.Clear()
+			m.streamingBlockIdx = -1
+			m.cachedBlocks = nil
 		}
 
 		m.viewport.GotoBottom()
 	case app.MessageRevertedMsg:
 		if msg.Session.ID == m.app.Session.ID {
 			m.cache.Clear()
+			m.streamingBlockIdx = -1
+			m.cachedBlocks = nil
 			m.tail = true
 			return m, m.renderView()
 		}
@@ -308,12 +325,16 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case opencode.EventListResponseEventMessageRemoved:
 		if msg.Properties.SessionID == m.app.Session.ID {
 			m.cache.Clear()
+			m.streamingBlockIdx = -1
+			m.cachedBlocks = nil
 			cmds = append(cmds, m.renderView())
 		}
 	case opencode.EventListResponseEventMessagePartRemoved:
 		if msg.Properties.SessionID == m.app.Session.ID {
 			// Clear the cache when a part is removed to ensure proper re-rendering
 			m.cache.Clear()
+			m.streamingBlockIdx = -1
+			m.cachedBlocks = nil
 			cmds = append(cmds, m.renderView())
 		}
 	case opencode.EventListResponseEventPermissionUpdated:
@@ -1107,7 +1128,12 @@ func (m *messagesComponent) updateStreamingBlock() tea.Cmd {
 			return m.renderView()()
 		}
 
-		// Update the cached block
+		// Update the cached block (double-check bounds for safety)
+		if m.streamingBlockIdx < 0 || m.streamingBlockIdx >= len(m.cachedBlocks) {
+			slog.Warn("streaming block index out of bounds during update", "idx", m.streamingBlockIdx, "len", len(m.cachedBlocks))
+			m.indexDirty = true
+			return m.renderView()()
+		}
 		m.cachedBlocks[m.streamingBlockIdx] = newContent
 
 		// Rebuild final content from cached blocks (same logic as renderView slow path)
