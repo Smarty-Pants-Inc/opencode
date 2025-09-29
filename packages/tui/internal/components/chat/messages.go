@@ -959,11 +959,231 @@ func (m *messagesComponent) renderView() tea.Cmd {
 
 // updateStreamingBlock re-renders only the streaming block for shimmer (fast path)
 func (m *messagesComponent) updateStreamingBlock() tea.Cmd {
-	// This is called on shimmer ticks to update only the streaming block
-	// For now, fall back to full render - proper implementation coming
-	slog.Info("updateStreamingBlock - falling back to full render for now")
-	m.indexDirty = true
-	return m.renderView()
+	// Validate we have streaming info
+	if m.streamingBlockIdx < 0 || m.streamingBlockIdx >= len(m.cachedBlocks) {
+		slog.Warn("invalid streaming block index", "idx", m.streamingBlockIdx, "len", len(m.cachedBlocks))
+		m.indexDirty = true
+		return m.renderView()
+	}
+
+	if m.streamingMessageID == "" {
+		slog.Warn("streaming message ID empty")
+		m.indexDirty = true
+		return m.renderView()
+	}
+
+	viewport := m.viewport
+	tail := m.tail
+
+	return func() tea.Msg {
+		// Find the streaming message (usually the last one)
+		var streamingMessage *app.Message
+		for i := range m.app.Messages {
+			switch info := m.app.Messages[i].Info.(type) {
+			case opencode.AssistantMessage:
+				if info.ID == m.streamingMessageID {
+					streamingMessage = &m.app.Messages[i]
+					break
+				}
+			}
+			if streamingMessage != nil {
+				break
+			}
+		}
+
+		if streamingMessage == nil {
+			slog.Warn("streaming message not found", "id", m.streamingMessageID)
+			m.indexDirty = true
+			return m.renderView()()
+		}
+
+		assistantInfo, ok := streamingMessage.Info.(opencode.AssistantMessage)
+		if !ok {
+			slog.Warn("streaming message not assistant")
+			m.indexDirty = true
+			return m.renderView()()
+		}
+
+		var newContent string
+		width := m.width
+		t := theme.CurrentTheme()
+
+		// Re-render the streaming block
+		if m.streamingPartIndex == -1 {
+			// "Generating..." placeholder
+			newContent = renderText(
+				m.app,
+				streamingMessage.Info,
+				"Generating...",
+				assistantInfo.ModelID,
+				m.showToolDetails,
+				width,
+				"",
+				false,
+				false,
+				false,
+				[]opencode.FilePart{},
+				[]opencode.AgentPart{},
+			)
+		} else if m.streamingPartIndex >= 0 && m.streamingPartIndex < len(streamingMessage.Parts) {
+			part := streamingMessage.Parts[m.streamingPartIndex]
+
+			switch p := part.(type) {
+			case opencode.TextPart:
+				// Collect tool calls
+				toolCallParts := make([]opencode.ToolPart, 0)
+				for pi := m.streamingPartIndex + 1; pi < len(streamingMessage.Parts); pi++ {
+					if _, ok := streamingMessage.Parts[pi].(opencode.TextPart); ok {
+						break
+					}
+					if toolPart, ok := streamingMessage.Parts[pi].(opencode.ToolPart); ok {
+						toolCallParts = append(toolCallParts, toolPart)
+					}
+				}
+
+				newContent = renderText(
+					m.app,
+					streamingMessage.Info,
+					p.Text,
+					assistantInfo.ModelID,
+					m.showToolDetails,
+					width,
+					"",
+					false,
+					false,
+					false,
+					[]opencode.FilePart{},
+					[]opencode.AgentPart{},
+					toolCallParts...,
+				)
+
+			case opencode.ToolPart:
+				permission := opencode.Permission{}
+				if m.app.CurrentPermission.CallID == p.CallID {
+					permission = m.app.CurrentPermission
+				}
+				newContent = renderToolDetails(m.app, p, permission, width)
+
+			case opencode.ReasoningPart:
+				// Find if this is the last streaming reasoning part
+				lastStreamingReasoningID := ""
+				if m.showThinkingBlocks {
+					for mi := len(m.app.Messages) - 1; mi >= 0 && lastStreamingReasoningID == ""; mi-- {
+						if _, ok := m.app.Messages[mi].Info.(opencode.AssistantMessage); !ok {
+							continue
+						}
+						parts := m.app.Messages[mi].Parts
+						for pi := len(parts) - 1; pi >= 0; pi-- {
+							if rp, ok := parts[pi].(opencode.ReasoningPart); ok {
+								if strings.TrimSpace(rp.Text) != "" && rp.Time.End == 0 {
+									lastStreamingReasoningID = rp.ID
+									break
+								}
+							}
+						}
+					}
+				}
+
+				shimmer := p.Time.End == 0 && p.ID == lastStreamingReasoningID
+				newContent = renderText(
+					m.app,
+					streamingMessage.Info,
+					p.Text,
+					assistantInfo.ModelID,
+					m.showToolDetails,
+					width,
+					"",
+					true,
+					false,
+					shimmer,
+					[]opencode.FilePart{},
+					[]opencode.AgentPart{},
+				)
+
+			default:
+				slog.Warn("unsupported streaming part type", "type", fmt.Sprintf("%T", p))
+				m.indexDirty = true
+				return m.renderView()()
+			}
+		} else {
+			slog.Warn("invalid streaming part index", "idx", m.streamingPartIndex, "len", len(streamingMessage.Parts))
+			m.indexDirty = true
+			return m.renderView()()
+		}
+
+		// Update the cached block
+		m.cachedBlocks[m.streamingBlockIdx] = newContent
+
+		// Rebuild final content from cached blocks (same logic as renderView slow path)
+		final := []string{}
+		clipboard := []string{}
+		var selection *selection
+		if m.selection != nil {
+			header := m.header
+			selection = m.selection.coords(lipgloss.Height(header) + 1)
+		}
+		for _, block := range m.cachedBlocks {
+			lines := strings.Split(block, "\n")
+			for index, line := range lines {
+				if selection == nil || index == 0 || index == len(lines)-1 {
+					final = append(final, line)
+					continue
+				}
+				y := len(final)
+				if y >= selection.startY && y <= selection.endY {
+					left := 3
+					if y == selection.startY {
+						left = selection.startX - 2
+					}
+					left = max(3, left)
+
+					lineWidth := ansi.StringWidth(line)
+					right := lineWidth - 1
+					if y == selection.endY {
+						right = min(selection.endX-2, right)
+					}
+
+					prefix := ansi.Cut(line, 0, left)
+					middle := strings.TrimRight(ansi.Strip(ansi.Cut(line, left, right)), " ")
+					suffix := ansi.Cut(line, left+ansi.StringWidth(middle), lineWidth)
+					clipboard = append(clipboard, middle)
+					line = prefix + styles.NewStyle().
+						Background(t.Accent()).
+						Foreground(t.BackgroundPanel()).
+						Render(ansi.Strip(middle)) +
+						suffix
+				}
+				final = append(final, line)
+			}
+			y := len(final)
+			if selection != nil && y >= selection.startY && y < selection.endY {
+				clipboard = append(clipboard, "")
+			}
+			final = append(final, "")
+		}
+		content := "\n" + strings.Join(final, "\n")
+
+		header := m.header
+		if m.headerDirty || m.lastHeaderWidth != m.width {
+			header = m.renderHeader()
+		}
+
+		viewport.SetHeight(m.height - lipgloss.Height(header))
+		viewport.ClearVirtual()
+		viewport.SetContent(content)
+		if tail {
+			viewport.GotoBottom()
+		}
+
+		return renderCompleteMsg{
+			header:           header,
+			clipboard:        clipboard,
+			viewport:         viewport,
+			partCount:        m.partCount,
+			lineCount:        m.lineCount,
+			messagePositions: m.messagePositions,
+		}
+	}
 }
 
 func (m *messagesComponent) renderHeader() string {
