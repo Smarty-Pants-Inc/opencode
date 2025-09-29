@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@kobalte/core": "0.13.11",
-    "@opencode-ai/sdk": "workspace:*",
+    "@smartypants-ai/sdk": "workspace:*",
     "@shikijs/transformers": "3.9.2",
     "@solid-primitives/event-bus": "1.1.2",
     "@solid-primitives/resize-observer": "2.1.3",

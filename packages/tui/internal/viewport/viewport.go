@@ -116,6 +116,11 @@ type Model struct {
 	lines            []string
 	longestLineWidth int
 
+	// Virtual rendering support
+	virtual      bool
+	virtualTotal int
+	virtualFetch func(offset int, height int) []string
+
 	// HighlightStyle highlights the ranges set with [SetHighligths].
 	HighlightStyle lipgloss.Style
 
@@ -248,6 +253,22 @@ func (m *Model) SetContent(s string) {
 // SetContentLines allows to set the lines to be shown instead of the content.
 // If a given line has a \n in it, it'll be considered a [Model.SoftWrap].
 // See also [Model.SetContent].
+// SetVirtual enables virtual rendering with total lines and fetch callback
+func (m *Model) SetVirtual(total int, fetch func(offset int, height int) []string) {
+	m.virtual = true
+	m.virtualTotal = total
+	m.virtualFetch = fetch
+	m.memo.Invalidate()
+}
+
+// ClearVirtual disables virtual rendering
+func (m *Model) ClearVirtual() {
+	m.virtual = false
+	m.virtualTotal = 0
+	m.virtualFetch = nil
+	m.memo.Invalidate()
+}
+
 func (m *Model) SetContentLines(lines []string) {
 	// if there's no content, set content to actual nil instead of one empty
 	// line.
@@ -273,6 +294,9 @@ func (m Model) GetContent() string {
 // calculateLine taking soft wrapping into account, returns the total viewable
 // lines and the real-line index for the given yoffset.
 func (m Model) calculateLine(yoffset int) (total, idx int) {
+	if m.virtual {
+		return m.virtualTotal, yoffset
+	}
 	if !m.SoftWrap {
 		for i, line := range m.lines {
 			adjust := max(1, lipgloss.Height(line))
@@ -351,7 +375,20 @@ func (m Model) visibleLines() (lines []string) {
 	maxHeight := m.maxHeight()
 	maxWidth := m.maxWidth()
 
+	// Virtual mode: fetch only visible window
+	if m.virtual {
+		var vlines []string
+		if m.virtualFetch != nil {
+			vlines = m.virtualFetch(m.YOffset, maxHeight)
+		}
+		for m.FillHeight && len(vlines) < maxHeight {
+			vlines = append(vlines, "")
+		}
+		return m.setupGutter(vlines)
+	}
+
 	if m.lineCount() > 0 {
+
 		pos := m.lineToIndex(m.YOffset)
 		top := max(0, pos)
 		bottom := clamp(pos+maxHeight, top, len(m.lines))
