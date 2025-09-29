@@ -61,6 +61,19 @@ type messagesComponent struct {
 	selection          *selection
 	messagePositions   map[string]int // map message ID to line position
 	animating          bool
+
+	// Incremental updates for shimmer
+	indexDirty         bool
+	cachedBlocks       []string // cached blocks from last full render
+	streamingBlockIdx  int      // index of currently streaming block (-1 if none)
+	streamingMessageID string   // message ID of streaming block
+	streamingPartIndex int      // part index within streaming message
+
+	// Header cache to avoid O(backlog) scans each frame
+	headerDirty        bool
+	lastHeaderWidth    int
+	lastHeaderTokens   float64
+	lastHeaderCost     float64
 }
 
 type selection struct {
@@ -148,8 +161,20 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case shimmerTickMsg:
 		if !m.shouldAnimateShimmer() {
 			m.animating = false
+			m.streamingBlockIdx = -1
+			m.streamingMessageID = ""
+			m.streamingPartIndex = -1
 			return m, nil
 		}
+		// Use incremental update if we have streaming block info and index is not dirty
+		if !m.indexDirty && m.streamingBlockIdx >= 0 && m.streamingMessageID != "" && len(m.cachedBlocks) > 0 {
+			return m, tea.Sequence(
+				m.updateStreamingBlock(),
+				tea.Tick(90*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }),
+			)
+		}
+		// Fall back to full render
+		m.indexDirty = true
 		return m, tea.Sequence(
 			m.renderView(),
 			tea.Tick(90*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }),
@@ -376,6 +401,7 @@ func (m *messagesComponent) renderView() tea.Cmd {
 		partCount := 0
 		lineCount := 0
 		messagePositions := make(map[string]int) // Track message ID to line position
+		m.streamingBlockIdx = -1                 // Reset streaming block index
 
 		orphanedToolCalls := make([]opencode.ToolPart, 0)
 
@@ -609,6 +635,12 @@ func (m *messagesComponent) renderView() tea.Cmd {
 							partCount++
 							lineCount += lipgloss.Height(content) + 1
 							blocks = append(blocks, content)
+							// Track streaming block
+							if !finished {
+								m.streamingBlockIdx = len(blocks) - 1
+								m.streamingMessageID = casted.ID
+								m.streamingPartIndex = partIndex
+							}
 							hasContent = true
 						}
 					case opencode.ToolPart:
@@ -659,6 +691,12 @@ func (m *messagesComponent) renderView() tea.Cmd {
 							partCount++
 							lineCount += lipgloss.Height(content) + 1
 							blocks = append(blocks, content)
+							// Track streaming tool part
+							if part.State.Status != opencode.ToolPartStateStatusCompleted && part.State.Status != opencode.ToolPartStateStatusError {
+								m.streamingBlockIdx = len(blocks) - 1
+								m.streamingMessageID = casted.ID
+								m.streamingPartIndex = partIndex
+							}
 							hasContent = true
 						}
 					case opencode.ReasoningPart:
@@ -688,6 +726,12 @@ func (m *messagesComponent) renderView() tea.Cmd {
 							partCount++
 							lineCount += lipgloss.Height(content) + 1
 							blocks = append(blocks, content)
+							// Track streaming reasoning part
+							if shimmer {
+								m.streamingBlockIdx = len(blocks) - 1
+								m.streamingMessageID = casted.ID
+								m.streamingPartIndex = partIndex
+							}
 							hasContent = true
 						}
 					}
@@ -723,6 +767,10 @@ func (m *messagesComponent) renderView() tea.Cmd {
 					partCount++
 					lineCount += lipgloss.Height(content) + 1
 					blocks = append(blocks, content)
+					// Track "Generating..." placeholder as streaming
+					m.streamingBlockIdx = len(blocks) - 1
+					m.streamingMessageID = casted.ID
+					m.streamingPartIndex = -1 // special value for placeholder
 				}
 			}
 
@@ -890,6 +938,10 @@ func (m *messagesComponent) renderView() tea.Cmd {
 			viewport.GotoBottom()
 		}
 
+		// Cache blocks for incremental updates
+		m.cachedBlocks = blocks
+		m.indexDirty = false
+
 		return renderCompleteMsg{
 			header:           header,
 			clipboard:        clipboard,
@@ -899,6 +951,15 @@ func (m *messagesComponent) renderView() tea.Cmd {
 			messagePositions: messagePositions,
 		}
 	}
+}
+
+// updateStreamingBlock re-renders only the streaming block for shimmer (fast path)
+func (m *messagesComponent) updateStreamingBlock() tea.Cmd {
+	// This is called on shimmer ticks to update only the streaming block
+	// For now, fall back to full render - proper implementation coming
+	slog.Info("updateStreamingBlock - falling back to full render for now")
+	m.indexDirty = true
+	return m.renderView()
 }
 
 func (m *messagesComponent) renderHeader() string {
@@ -922,26 +983,35 @@ func (m *messagesComponent) renderHeader() string {
 	muted := styles.NewStyle().Foreground(t.TextMuted()).Background(bgColor).Render
 
 	sessionInfo := ""
-	tokens := float64(0)
-	cost := float64(0)
+	tokens := m.lastHeaderTokens
+	cost := m.lastHeaderCost
 	contextWindow := m.app.Model.Limit.Context
 
-	for _, message := range m.app.Messages {
-		if assistant, ok := message.Info.(opencode.AssistantMessage); ok {
-			cost += assistant.Cost
-			usage := assistant.Tokens
-			if usage.Output > 0 {
-				if assistant.Summary {
-					tokens = usage.Output
-					continue
+	// Only recompute tokens/cost if header is dirty or width changed
+	if m.headerDirty || m.lastHeaderWidth != headerWidth {
+		tokens = float64(0)
+		cost = float64(0)
+		for _, message := range m.app.Messages {
+			if assistant, ok := message.Info.(opencode.AssistantMessage); ok {
+				cost += assistant.Cost
+				usage := assistant.Tokens
+				if usage.Output > 0 {
+					if assistant.Summary {
+						tokens = usage.Output
+						continue
+					}
+					tokens = (usage.Input +
+						usage.Cache.Read +
+						usage.Cache.Write +
+						usage.Output +
+						usage.Reasoning)
 				}
-				tokens = (usage.Input +
-					usage.Cache.Read +
-					usage.Cache.Write +
-					usage.Output +
-					usage.Reasoning)
 			}
 		}
+		m.lastHeaderTokens = tokens
+		m.lastHeaderCost = cost
+		m.lastHeaderWidth = headerWidth
+		m.headerDirty = false
 	}
 
 	// Check if current model is a subscription model (cost is 0 for both input and output)
