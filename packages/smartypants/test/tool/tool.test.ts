@@ -57,12 +57,15 @@ describe("tool.ls", () => {
     const result = await Instance.provide({
       directory: projectRoot,
       fn: async () => {
-        return await list.execute({ path: fixturePath, ignore: [".git"] }, ctx)
+        return await list.execute({ path: path.join(fixturePath, "example"), ignore: [".git"] }, ctx)
       },
     })
 
     // Normalize absolute path to relative for consistent snapshots
-    const normalizedOutput = result.output.replace(fixturePath, "packages/smartypants/test/fixtures")
+    const normalizedOutput = result.output.replace(
+      path.join(fixturePath, "example"),
+      "packages/smartypants/test/fixtures/example",
+    )
     expect(normalizedOutput).toMatchSnapshot()
   })
 })

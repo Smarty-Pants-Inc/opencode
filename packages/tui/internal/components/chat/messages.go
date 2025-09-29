@@ -370,6 +370,70 @@ func (m *messagesComponent) renderView() tea.Cmd {
 	tail := m.tail
 
 	return func() tea.Msg {
+		// Fast path: reuse existing blocks when index not dirty
+		if !m.indexDirty && len(m.blockContents) > 0 {
+			header := m.renderHeader()
+			t := theme.CurrentTheme()
+			_ = t // keep style variable for parity with slow path
+			// Compute total lines (leading blank + block heights + inter-block blanks)
+			totalLines := 1
+			for _, h := range m.blockHeights {
+				totalLines += h + 1
+			}
+			viewport.SetHeight(m.height - lipgloss.Height(header))
+			viewport.SetVirtual(totalLines, func(offset int, height int) []string {
+				var out []string
+				if offset < 0 {
+					offset = 0
+				}
+				end := offset + height
+				// Leading blank
+				if offset == 0 {
+					out = append(out, "")
+					offset++
+				}
+				// Find starting block (linear scan)
+				i := 0
+				for i < len(m.blockPrefix) && m.blockPrefix[i]+m.blockHeights[i] <= offset {
+					i++
+				}
+				cur := offset
+				for i < len(m.blockContents) && cur < end {
+					startOfBlock := m.blockPrefix[i]
+					lineInBlock := 0
+					if cur > startOfBlock {
+						lineInBlock = cur - startOfBlock
+					}
+					lines := strings.Split(m.blockContents[i], "\n")
+					for lineInBlock < len(lines) && cur < end {
+						out = append(out, lines[lineInBlock])
+						lineInBlock++
+						cur++
+					}
+					if cur < end {
+						out = append(out, "")
+						cur++
+					}
+					i++
+				}
+				for len(out) < height {
+					out = append(out, "")
+				}
+				return out
+			})
+			if tail {
+				viewport.GotoBottom()
+			}
+			return renderCompleteMsg{
+				header:           header,
+				clipboard:        m.clipboard,
+				viewport:         viewport,
+				partCount:        len(m.blockContents),
+				lineCount:        totalLines - 1,
+				messagePositions: m.messagePositions,
+			}
+		}
+
 		header := m.renderHeader()
 		measure := util.Measure("messages.renderView")
 		defer measure()

@@ -1,26 +1,40 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`tool.ls basic 1`] = `
-"packages/smartypants/test/fixtures/
+"packages/smartypants/test/fixtures/example/
+  .claude/
+    commands/
+      done-sp.md
+      keep-going-sp.md
+      plan-sp.md
+    hooks/
+      README.md
+      session-start.py
+      welcome-message.py
   .devcontainer/
     Dockerfile
     devcontainer.json
     postCreate.sh
     postStart.sh
-  .smarty/
-    bin/
-      pants
-      pants.pyz
-    tmp/
-      2025-08-15-mwm-counsel.md
-      2025-09-05-smartypants-x-sizzle-reel.md
-      2025-09-23-smarty-pants-onboarding.md
-      2025-09-23-smarty-pants-onboarding.raw.txt
-      prompt-composer-README.md
-  artifacts/
-    dot-smarty-0.1.0a1.tgz
-  docker/
-    smarty-cli.Dockerfile
+  .secrets/
+    age-recipients.txt
+    dev.env.enc
+    google-service-account.json.enc
+  agents/
+    agents.md
+    claude.md
+    smarty.md
+  docs/
+    secrets/
+      README.md
+    README.md
+    alpha-checklist.md
+    devcontainer-modern-cli-setup-2025.md
+    facts-first-tools.md
+    knowledge-guidelines.md
+    lanes-readme.md
+    langfuse-integration-session-2025-09-28.md
+    markdown-sync.md
   external/
     opencode/
       .github/
@@ -47,23 +61,6 @@ exports[`tool.ls basic 1`] = `
           hello.md
       packages/
         console/
-          app/
-            src/
-              routes/
-                debug/
-                  index.ts
-                stripe/
-                  webhook.ts
-                zen/
-                  v1/
-                    messages.ts
-                    responses.ts
-                  handler.ts
-                [...404].css
-                [...404].tsx
-                discord.ts
-                workspace.css
-                workspace.tsx
           function/
             src/
               auth.ts
@@ -103,40 +100,39 @@ exports[`tool.ls basic 1`] = `
           logo-square-light.svg
           logomark-dark.svg
           logomark-light.svg
-        plugin/
-          src/
-            example.ts
-            index.ts
-            shell.ts
-            tool.ts
-          tsconfig.json
-        sdk/
-          stainless/
-            generate.ts
-            stainless-workspace.json
-            stainless.yml
-          .gitignore
       patches/
         @solidjs%2Fstart@1.1.7.patch
       specs/
         project.md
       AGENTS.md
-      bun.lock
       bunfig.toml
       opencode.json
       sst-env.d.ts
       sst.config.ts
       tsconfig.json
       turbo.json
-  .envrc
+  packages/
+    smarty-pants/
+      src/
+        smarty_pants/
+          __main__.py
+          doctor.py
+  templates/
+    plan-template.md
+    spec-template.md
+    tasks-template.md
+  .gitignore
   .gitmodules
   .sops.yaml
   AGENTS.md
   CLAUDE.md
+  Makefile
+  PLAN_CODEX.md
   PLAN_OPENCODE.md
   README.md
+  ROADMAP.md
   SCRATCH.md
-  SMARTY_PANTS_MVP.md
   logos.txt
+  pyproject.toml
 "
 `;
