@@ -62,15 +62,18 @@ type messagesComponent struct {
 	messagePositions   map[string]int // map message ID to line position
 	animating          bool
 
-	// Virtualization index for windowed assembly
-	blockContents []string
-	blockHeights  []int
-	blockPrefix   []int // starting line per block (includes leading blank and inter-block blanks)
-	indexDirty    bool
+	// Incremental updates for shimmer
+	indexDirty         bool
+	cachedBlocks       []string // cached blocks from last full render
+	streamingBlockIdx  int      // index of currently streaming block (-1 if none)
+	streamingMessageID string   // message ID of streaming block
+	streamingPartIndex int      // part index within streaming message
 
 	// Header cache to avoid O(backlog) scans each frame
-	headerDirty     bool
-	lastHeaderWidth int
+	headerDirty        bool
+	lastHeaderWidth    int
+	lastHeaderTokens   float64
+	lastHeaderCost     float64
 }
 
 type selection struct {
@@ -158,15 +161,24 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case shimmerTickMsg:
 		if !m.shouldAnimateShimmer() {
 			m.animating = false
+			m.streamingBlockIdx = -1
+			m.streamingMessageID = ""
+			m.streamingPartIndex = -1
 			return m, nil
 		}
-		// PERF: Avoid re-rendering entire backlog on shimmer when history is huge
-		var cmds []tea.Cmd
-		if m.lineCount <= 2000 {
-			cmds = append(cmds, m.renderView())
+		// Use incremental update if we have streaming block info and index is not dirty
+		if !m.indexDirty && m.streamingBlockIdx >= 0 && m.streamingMessageID != "" && len(m.cachedBlocks) > 0 {
+			return m, tea.Sequence(
+				m.updateStreamingBlock(),
+				tea.Tick(90*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }),
+			)
 		}
-		cmds = append(cmds, tea.Tick(150*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }))
-		return m, tea.Batch(cmds...)
+		// Fall back to full render
+		m.indexDirty = true
+		return m, tea.Sequence(
+			m.renderView(),
+			tea.Tick(90*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }),
+		)
 	case tea.MouseClickMsg:
 		slog.Info("mouse", "x", msg.X, "y", msg.Y, "offset", m.viewport.YOffset)
 		y := msg.Y + m.viewport.YOffset
@@ -383,73 +395,6 @@ func (m *messagesComponent) renderView() tea.Cmd {
 	tail := m.tail
 
 	return func() tea.Msg {
-		// Fast path: reuse existing blocks when index not dirty
-		if !m.indexDirty && len(m.blockContents) > 0 {
-			header := m.header
-			if m.headerDirty || m.lastHeaderWidth != m.width {
-				header = m.renderHeader()
-			}
-			t := theme.CurrentTheme()
-			_ = t // keep style variable for parity with slow path
-			// Compute total lines (leading blank + block heights + inter-block blanks)
-			totalLines := 1
-			for _, h := range m.blockHeights {
-				totalLines += h + 1
-			}
-			viewport.SetHeight(m.height - lipgloss.Height(header))
-			viewport.SetVirtual(totalLines, func(offset int, height int) []string {
-				var out []string
-				if offset < 0 {
-					offset = 0
-				}
-				end := offset + height
-				// Leading blank
-				if offset == 0 {
-					out = append(out, "")
-					offset++
-				}
-				// Find starting block (linear scan)
-				i := 0
-				for i < len(m.blockPrefix) && m.blockPrefix[i]+m.blockHeights[i] <= offset {
-					i++
-				}
-				cur := offset
-				for i < len(m.blockContents) && cur < end {
-					startOfBlock := m.blockPrefix[i]
-					lineInBlock := 0
-					if cur > startOfBlock {
-						lineInBlock = cur - startOfBlock
-					}
-					lines := strings.Split(m.blockContents[i], "\n")
-					for lineInBlock < len(lines) && cur < end {
-						out = append(out, lines[lineInBlock])
-						lineInBlock++
-						cur++
-					}
-					if cur < end {
-						out = append(out, "")
-						cur++
-					}
-					i++
-				}
-				for len(out) < height {
-					out = append(out, "")
-				}
-				return out
-			})
-			if tail {
-				viewport.GotoBottom()
-			}
-			return renderCompleteMsg{
-				header:           header,
-				clipboard:        m.clipboard,
-				viewport:         viewport,
-				partCount:        len(m.blockContents),
-				lineCount:        totalLines - 1,
-				messagePositions: m.messagePositions,
-			}
-		}
-
 		header := m.renderHeader()
 		measure := util.Measure("messages.renderView")
 		defer measure()
@@ -459,6 +404,7 @@ func (m *messagesComponent) renderView() tea.Cmd {
 		partCount := 0
 		lineCount := 0
 		messagePositions := make(map[string]int) // Track message ID to line position
+		m.streamingBlockIdx = -1                 // Reset streaming block index
 
 		orphanedToolCalls := make([]opencode.ToolPart, 0)
 
@@ -692,6 +638,12 @@ func (m *messagesComponent) renderView() tea.Cmd {
 							partCount++
 							lineCount += lipgloss.Height(content) + 1
 							blocks = append(blocks, content)
+							// Track streaming block
+							if !finished {
+								m.streamingBlockIdx = len(blocks) - 1
+								m.streamingMessageID = casted.ID
+								m.streamingPartIndex = partIndex
+							}
 							hasContent = true
 						}
 					case opencode.ToolPart:
@@ -742,6 +694,12 @@ func (m *messagesComponent) renderView() tea.Cmd {
 							partCount++
 							lineCount += lipgloss.Height(content) + 1
 							blocks = append(blocks, content)
+							// Track streaming tool part
+							if part.State.Status != opencode.ToolPartStateStatusCompleted && part.State.Status != opencode.ToolPartStateStatusError {
+								m.streamingBlockIdx = len(blocks) - 1
+								m.streamingMessageID = casted.ID
+								m.streamingPartIndex = partIndex
+							}
 							hasContent = true
 						}
 					case opencode.ReasoningPart:
@@ -771,6 +729,12 @@ func (m *messagesComponent) renderView() tea.Cmd {
 							partCount++
 							lineCount += lipgloss.Height(content) + 1
 							blocks = append(blocks, content)
+							// Track streaming reasoning part
+							if shimmer {
+								m.streamingBlockIdx = len(blocks) - 1
+								m.streamingMessageID = casted.ID
+								m.streamingPartIndex = partIndex
+							}
 							hasContent = true
 						}
 					}
@@ -806,6 +770,10 @@ func (m *messagesComponent) renderView() tea.Cmd {
 					partCount++
 					lineCount += lipgloss.Height(content) + 1
 					blocks = append(blocks, content)
+					// Track "Generating..." placeholder as streaming
+					m.streamingBlockIdx = len(blocks) - 1
+					m.streamingMessageID = casted.ID
+					m.streamingPartIndex = -1 // special value for placeholder
 				}
 			}
 
@@ -974,6 +942,10 @@ func (m *messagesComponent) renderView() tea.Cmd {
 			viewport.GotoBottom()
 		}
 
+		// Cache blocks for incremental updates
+		m.cachedBlocks = blocks
+		m.indexDirty = false
+
 		return renderCompleteMsg{
 			header:           header,
 			clipboard:        clipboard,
@@ -983,6 +955,15 @@ func (m *messagesComponent) renderView() tea.Cmd {
 			messagePositions: messagePositions,
 		}
 	}
+}
+
+// updateStreamingBlock re-renders only the streaming block for shimmer (fast path)
+func (m *messagesComponent) updateStreamingBlock() tea.Cmd {
+	// This is called on shimmer ticks to update only the streaming block
+	// For now, fall back to full render - proper implementation coming
+	slog.Info("updateStreamingBlock - falling back to full render for now")
+	m.indexDirty = true
+	return m.renderView()
 }
 
 func (m *messagesComponent) renderHeader() string {
@@ -1006,26 +987,35 @@ func (m *messagesComponent) renderHeader() string {
 	muted := styles.NewStyle().Foreground(t.TextMuted()).Background(bgColor).Render
 
 	sessionInfo := ""
-	tokens := float64(0)
-	cost := float64(0)
+	tokens := m.lastHeaderTokens
+	cost := m.lastHeaderCost
 	contextWindow := m.app.Model.Limit.Context
 
-	for _, message := range m.app.Messages {
-		if assistant, ok := message.Info.(opencode.AssistantMessage); ok {
-			cost += assistant.Cost
-			usage := assistant.Tokens
-			if usage.Output > 0 {
-				if assistant.Summary {
-					tokens = usage.Output
-					continue
+	// Only recompute tokens/cost if header is dirty or width changed
+	if m.headerDirty || m.lastHeaderWidth != headerWidth {
+		tokens = float64(0)
+		cost = float64(0)
+		for _, message := range m.app.Messages {
+			if assistant, ok := message.Info.(opencode.AssistantMessage); ok {
+				cost += assistant.Cost
+				usage := assistant.Tokens
+				if usage.Output > 0 {
+					if assistant.Summary {
+						tokens = usage.Output
+						continue
+					}
+					tokens = (usage.Input +
+						usage.Cache.Read +
+						usage.Cache.Write +
+						usage.Output +
+						usage.Reasoning)
 				}
-				tokens = (usage.Input +
-					usage.Cache.Read +
-					usage.Cache.Write +
-					usage.Output +
-					usage.Reasoning)
 			}
 		}
+		m.lastHeaderTokens = tokens
+		m.lastHeaderCost = cost
+		m.lastHeaderWidth = headerWidth
+		m.headerDirty = false
 	}
 
 	// Check if current model is a subscription model (cost is 0 for both input and output)
