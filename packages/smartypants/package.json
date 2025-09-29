@@ -7,7 +7,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "./script/build.ts",
-    "dev": "bun run --conditions=development ./src/index.ts"
+    "dev": "bun run --conditions=development ./src/index.ts",
+    "test": "bun test"
   },
   "bin": {
     "smartypants": "./bin/smartypants"

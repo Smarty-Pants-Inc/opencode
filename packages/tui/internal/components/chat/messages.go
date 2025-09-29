@@ -150,10 +150,13 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.animating = false
 			return m, nil
 		}
-		return m, tea.Sequence(
-			m.renderView(),
-			tea.Tick(90*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }),
-		)
+		// PERF: Avoid re-rendering entire backlog on shimmer when history is huge
+		var cmds []tea.Cmd
+		if m.lineCount <= 2000 {
+			cmds = append(cmds, m.renderView())
+		}
+		cmds = append(cmds, tea.Tick(150*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }))
+		return m, tea.Batch(cmds...)
 	case tea.MouseClickMsg:
 		slog.Info("mouse", "x", msg.X, "y", msg.Y, "offset", m.viewport.YOffset)
 		y := msg.Y + m.viewport.YOffset
