@@ -61,6 +61,12 @@ type messagesComponent struct {
 	selection          *selection
 	messagePositions   map[string]int // map message ID to line position
 	animating          bool
+
+	// Virtualization index for windowed assembly
+	blockContents []string
+	blockHeights  []int
+	blockPrefix   []int // starting line per block (includes leading blank and inter-block blanks)
+	indexDirty    bool
 }
 
 type selection struct {

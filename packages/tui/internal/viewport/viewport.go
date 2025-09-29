@@ -131,6 +131,11 @@ type Model struct {
 
 	highlights []highlightInfo
 	hiIdx      int
+
+	// Virtual rendering support: fetch-only visible window
+	virtual      bool
+	virtualTotal int
+	virtualFetch func(offset int, height int) []string
 }
 
 // GutterFunc can be implemented and set into [Model.LeftGutterFunc].
@@ -266,6 +271,22 @@ func (m *Model) SetContentLines(lines []string) {
 
 // GetContent returns the entire content as a single string.
 // Line endings are normalized to '\n'.
+// SetVirtual enables virtual rendering with total lines and a fetcher
+func (m *Model) SetVirtual(total int, fetch func(offset int, height int) []string) {
+	m.virtual = true
+	m.virtualTotal = total
+	m.virtualFetch = fetch
+	m.memo.Invalidate()
+}
+
+// ClearVirtual disables virtual rendering
+func (m *Model) ClearVirtual() {
+	m.virtual = false
+	m.virtualTotal = 0
+	m.virtualFetch = nil
+	m.memo.Invalidate()
+}
+
 func (m Model) GetContent() string {
 	return strings.Join(m.lines, "\n")
 }
@@ -273,6 +294,9 @@ func (m Model) GetContent() string {
 // calculateLine taking soft wrapping into account, returns the total viewable
 // lines and the real-line index for the given yoffset.
 func (m Model) calculateLine(yoffset int) (total, idx int) {
+	if m.virtual {
+		return m.virtualTotal, yoffset
+	}
 	if !m.SoftWrap {
 		for i, line := range m.lines {
 			adjust := max(1, lipgloss.Height(line))
@@ -350,6 +374,18 @@ func (m Model) maxHeight() int {
 func (m Model) visibleLines() (lines []string) {
 	maxHeight := m.maxHeight()
 	maxWidth := m.maxWidth()
+
+	// Virtual mode: fetch only visible window
+	if m.virtual {
+		var vlines []string
+		if m.virtualFetch != nil {
+			vlines = m.virtualFetch(m.YOffset, maxHeight)
+		}
+		for m.FillHeight && len(vlines) < maxHeight {
+			vlines = append(vlines, "")
+		}
+		return m.setupGutter(vlines)
+	}
 
 	if m.lineCount() > 0 {
 		pos := m.lineToIndex(m.YOffset)
