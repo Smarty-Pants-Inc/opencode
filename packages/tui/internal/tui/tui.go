@@ -1104,7 +1104,12 @@ func (a Model) home() (string, int, int) {
 	editorY := (a.height / 2) + (mainHeight / 2) - 3
 	editorYDelta := 3
 
-	// Always overlay the editor view (with cursor) so caret aligns
+	// Compute editor lines and set cursor offset
+	editorLines := a.editor.Lines()
+	if editorLines > 1 {
+		editorYDelta = 2
+	}
+	// Overlay the editor view (with cursor) so caret aligns
 	editorHeight := lipgloss.Height(editorView)
 	if editorY+editorHeight > a.height {
 		difference := (editorY + editorHeight) - a.height
@@ -1228,7 +1233,9 @@ func (a Model) executeCommand(command commands.Command) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return a, toast.NewErrorToast("Failed to read trace file")
 			}
-			var payload struct { URL string `json:"url"` }
+			var payload struct {
+				URL string `json:"url"`
+			}
 			json.Unmarshal(b, &payload)
 			if payload.URL == "" {
 				return a, toast.NewErrorToast("No URL in trace file")

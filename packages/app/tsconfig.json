@@ -6,6 +6,8 @@
     "jsxImportSource": "solid-js",
     "types": ["vite/client"],
     "lib": ["DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "customConditions": ["development"],
     "paths": {
       "@/*": ["./src/*"]
     }
