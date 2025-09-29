@@ -4,6 +4,8 @@ import { Snapshot } from "../../src/snapshot"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 
+const normalize = (p: string) => p.replace(/^\/private\//, "/");
+
 async function bootstrap() {
   return tmpdir({
     git: true,
@@ -33,7 +35,8 @@ test("tracks deleted files correctly", async () => {
 
       await $`rm ${tmp.path}/a.txt`.quiet()
 
-      expect((await Snapshot.patch(before!)).files).toContain(`${tmp.path}/a.txt`)
+      const __files = (await Snapshot.patch(before!)).files.map(normalize)
+      expect(__files).toContain(`${tmp.path}/a.txt`)
     },
   })
 })
@@ -126,7 +129,7 @@ test("binary file handling", async () => {
       await Bun.write(`${tmp.path}/image.png`, Buffer.from([0x89, 0x50, 0x4e, 0x47]))
 
       const patch = await Snapshot.patch(before!)
-      expect(patch.files).toContain(`${tmp.path}/image.png`)
+      expect(patch.files.map(normalize)).toContain(`${tmp.path}/image.png`)
 
       await Snapshot.revert([patch])
       expect(await Bun.file(`${tmp.path}/image.png`).exists()).toBe(false)
@@ -144,7 +147,8 @@ test("symlink handling", async () => {
 
       await $`ln -s ${tmp.path}/a.txt ${tmp.path}/link.txt`.quiet()
 
-      expect((await Snapshot.patch(before!)).files).toContain(`${tmp.path}/link.txt`)
+      const __files = (await Snapshot.patch(before!)).files.map(normalize)
+      expect(__files).toContain(`${tmp.path}/link.txt`)
     },
   })
 })
@@ -159,7 +163,8 @@ test("large file handling", async () => {
 
       await Bun.write(`${tmp.path}/large.txt`, "x".repeat(1024 * 1024))
 
-      expect((await Snapshot.patch(before!)).files).toContain(`${tmp.path}/large.txt`)
+      const __files = (await Snapshot.patch(before!)).files.map(normalize)
+      expect(__files).toContain(`${tmp.path}/large.txt`)
     },
   })
 })
@@ -194,7 +199,7 @@ test("special characters in filenames", async () => {
       await Bun.write(`${tmp.path}/file-with-dashes.txt`, "DASHES")
       await Bun.write(`${tmp.path}/file_with_underscores.txt`, "UNDERSCORES")
 
-      const files = (await Snapshot.patch(before!)).files
+      const files = (await Snapshot.patch(before!)).files.map(normalize)
       expect(files).toContain(`${tmp.path}/file with spaces.txt`)
       expect(files).toContain(`${tmp.path}/file-with-dashes.txt`)
       expect(files).toContain(`${tmp.path}/file_with_underscores.txt`)
@@ -301,7 +306,7 @@ test("very long filenames", async () => {
       await Bun.write(longFile, "long filename content")
 
       const patch = await Snapshot.patch(before!)
-      expect(patch.files).toContain(longFile)
+      expect(patch.files.map(normalize)).toContain(longFile)
 
       await Snapshot.revert([patch])
       expect(await Bun.file(longFile).exists()).toBe(false)
@@ -322,9 +327,10 @@ test("hidden files", async () => {
       await Bun.write(`${tmp.path}/.config`, "config content")
 
       const patch = await Snapshot.patch(before!)
-      expect(patch.files).toContain(`${tmp.path}/.hidden`)
-      expect(patch.files).toContain(`${tmp.path}/.gitignore`)
-      expect(patch.files).toContain(`${tmp.path}/.config`)
+      const __files = patch.files.map(normalize)
+      expect(__files).toContain(`${tmp.path}/.hidden`)
+      expect(__files).toContain(`${tmp.path}/.gitignore`)
+      expect(__files).toContain(`${tmp.path}/.config`)
     },
   })
 })
@@ -343,8 +349,9 @@ test("nested symlinks", async () => {
       await $`ln -s ${tmp.path}/sub ${tmp.path}/sub-link`.quiet()
 
       const patch = await Snapshot.patch(before!)
-      expect(patch.files).toContain(`${tmp.path}/sub/dir/link.txt`)
-      expect(patch.files).toContain(`${tmp.path}/sub-link`)
+      const __files = patch.files.map(normalize)
+      expect(__files).toContain(`${tmp.path}/sub/dir/link.txt`)
+      expect(__files).toContain(`${tmp.path}/sub-link`)
     },
   })
 })
@@ -400,13 +407,14 @@ test("gitignore changes", async () => {
       await Bun.write(`${tmp.path}/normal.txt`, "normal content")
 
       const patch = await Snapshot.patch(before!)
+      const __files = patch.files.map(normalize)
 
       // Should track gitignore itself
-      expect(patch.files).toContain(`${tmp.path}/.gitignore`)
+      expect(__files).toContain(`${tmp.path}/.gitignore`)
       // Should track normal files
-      expect(patch.files).toContain(`${tmp.path}/normal.txt`)
+      expect(__files).toContain(`${tmp.path}/normal.txt`)
       // Should not track ignored files (git won't see them)
-      expect(patch.files).not.toContain(`${tmp.path}/test.ignored`)
+      expect(__files).not.toContain(`${tmp.path}/test.ignored`)
     },
   })
 })
@@ -451,7 +459,7 @@ test("snapshot state isolation between projects", async () => {
       const before1 = await Snapshot.track()
       await Bun.write(`${tmp1.path}/project1.txt`, "project1 content")
       const patch1 = await Snapshot.patch(before1!)
-      expect(patch1.files).toContain(`${tmp1.path}/project1.txt`)
+      expect(patch1.files.map(normalize)).toContain(`${tmp1.path}/project1.txt`)
     },
   })
 
@@ -461,10 +469,11 @@ test("snapshot state isolation between projects", async () => {
       const before2 = await Snapshot.track()
       await Bun.write(`${tmp2.path}/project2.txt`, "project2 content")
       const patch2 = await Snapshot.patch(before2!)
-      expect(patch2.files).toContain(`${tmp2.path}/project2.txt`)
+      const __files2 = patch2.files.map(normalize)
+      expect(__files2).toContain(`${tmp2.path}/project2.txt`)
 
       // Ensure project1 files don't appear in project2
-      expect(patch2.files).not.toContain(`${tmp1?.path}/project1.txt`)
+      expect(__files2).not.toContain(`${tmp1?.path}/project1.txt`)
     },
   })
 })
