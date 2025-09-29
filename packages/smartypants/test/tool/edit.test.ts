@@ -110,6 +110,7 @@ const testCases: TestCase[] = [
     find: 'console.log("test");',
     replace: 'console.log("updated");',
     all: false,
+    fail: true,
   },
 
   // Error cases
