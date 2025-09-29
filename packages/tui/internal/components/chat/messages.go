@@ -61,6 +61,16 @@ type messagesComponent struct {
 	selection          *selection
 	messagePositions   map[string]int // map message ID to line position
 	animating          bool
+
+	// Virtualization index for windowed assembly
+	blockContents []string
+	blockHeights  []int
+	blockPrefix   []int // starting line per block (includes leading blank and inter-block blanks)
+	indexDirty    bool
+
+	// Header cache to avoid O(backlog) scans each frame
+	headerDirty     bool
+	lastHeaderWidth int
 }
 
 type selection struct {
@@ -202,6 +212,7 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Clear cache on resize since width affects rendering
 		if m.width != effectiveWidth {
 			m.cache.Clear()
+			m.indexDirty = true
 		}
 		m.width = effectiveWidth
 		m.height = msg.Height - 7
@@ -218,6 +229,7 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case dialog.ThemeSelectedMsg:
 		m.cache.Clear()
+		m.indexDirty = true
 		m.loading = true
 		return m, m.renderView()
 	case ToggleToolDetailsMsg:
@@ -231,6 +243,7 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case app.SessionLoadedMsg:
 		m.tail = true
 		m.loading = true
+		m.indexDirty = true
 		return m, m.renderView()
 	case app.SessionClearedMsg:
 		m.cache.Clear()
@@ -372,7 +385,10 @@ func (m *messagesComponent) renderView() tea.Cmd {
 	return func() tea.Msg {
 		// Fast path: reuse existing blocks when index not dirty
 		if !m.indexDirty && len(m.blockContents) > 0 {
-			header := m.renderHeader()
+			header := m.header
+			if m.headerDirty || m.lastHeaderWidth != m.width {
+				header = m.renderHeader()
+			}
 			t := theme.CurrentTheme()
 			_ = t // keep style variable for parity with slow path
 			// Compute total lines (leading blank + block heights + inter-block blanks)
