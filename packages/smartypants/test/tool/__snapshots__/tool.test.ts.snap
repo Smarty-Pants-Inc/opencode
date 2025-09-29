@@ -7,6 +7,20 @@ exports[`tool.ls basic 1`] = `
     devcontainer.json
     postCreate.sh
     postStart.sh
+  .smarty/
+    bin/
+      pants
+      pants.pyz
+    tmp/
+      2025-08-15-mwm-counsel.md
+      2025-09-05-smartypants-x-sizzle-reel.md
+      2025-09-23-smarty-pants-onboarding.md
+      2025-09-23-smarty-pants-onboarding.raw.txt
+      prompt-composer-README.md
+  artifacts/
+    dot-smarty-0.1.0a1.tgz
+  docker/
+    smarty-cli.Dockerfile
   external/
     opencode/
       .github/
@@ -34,41 +48,22 @@ exports[`tool.ls basic 1`] = `
       packages/
         console/
           app/
-            .opencode/
-              agent/
-                css.md
-            public/
-              favicon.svg
-              robots.txt
-              social-share.png
-              theme.json
             src/
-              asset/
-                logo-ornate-dark.svg
-                logo.svg
               routes/
                 debug/
                   index.ts
                 stripe/
                   webhook.ts
+                zen/
+                  v1/
+                    messages.ts
+                    responses.ts
+                  handler.ts
                 [...404].css
                 [...404].tsx
                 discord.ts
                 workspace.css
                 workspace.tsx
-              style/
-                component/
-                  button.css
-                base.css
-                index.css
-                reset.css
-              entry-client.tsx
-              entry-server.tsx
-            .gitignore
-            README.md
-            app.config.ts
-            package.json
-            sst-env.d.ts
           function/
             src/
               auth.ts
@@ -91,6 +86,12 @@ exports[`tool.ls basic 1`] = `
             package.json
             sst-env.d.ts
             tsconfig.json
+        function/
+          src/
+            api.ts
+          package.json
+          sst-env.d.ts
+          tsconfig.json
         identity/
           avatar-dark.png
           avatar-light.png
@@ -102,38 +103,40 @@ exports[`tool.ls basic 1`] = `
           logo-square-light.svg
           logomark-dark.svg
           logomark-light.svg
+        plugin/
+          src/
+            example.ts
+            index.ts
+            shell.ts
+            tool.ts
+          tsconfig.json
+        sdk/
+          stainless/
+            generate.ts
+            stainless-workspace.json
+            stainless.yml
+          .gitignore
       patches/
         @solidjs%2Fstart@1.1.7.patch
-      script/
-        format.ts
-        publish.ts
-        release
-        stats.ts
       specs/
         project.md
       AGENTS.md
-      STATS.md
       bun.lock
       bunfig.toml
       opencode.json
       sst-env.d.ts
+      sst.config.ts
       tsconfig.json
       turbo.json
-  sources/
-    meetings/
-      2025-08-15-mwm-counsel.md
-      2025-09-05-smartypants-x-sizzle-reel.md
-      2025-09-23-smarty-pants-onboarding.md
-  templates/
-    plan-template.md
-    spec-template.md
-    tasks-template.md
+  .envrc
+  .gitmodules
   .sops.yaml
   AGENTS.md
   CLAUDE.md
-  PLAN_CODEX.md
   PLAN_OPENCODE.md
+  README.md
   SCRATCH.md
+  SMARTY_PANTS_MVP.md
   logos.txt
 "
 `;
