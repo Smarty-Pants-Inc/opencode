@@ -934,7 +934,10 @@ func (a Model) View() (string, *tea.Cursor) {
 	mainLayout = a.toastManager.RenderOverlay(mainLayout)
 
 	if theme.CurrentThemeUsesAnsiColors() {
-		mainLayout = util.ConvertRGBToAnsi16Colors(mainLayout)
+		// PERF: Only scan/convert if RGB 24-bit CSI sequences are present
+		if strings.Contains(mainLayout, "\x1b[38;2;") || strings.Contains(mainLayout, "\x1b[48;2;") {
+			mainLayout = util.ConvertRGBToAnsi16Colors(mainLayout)
+		}
 	}
 
 	cursor := a.editor.Cursor()
@@ -1043,7 +1046,7 @@ func (a Model) home() (string, int, int) {
 
 	editorX := max(0, (effectiveWidth-editorWidth)/2)
 	editorY := (a.height / 2) + (mainHeight / 2) - 3
-	editorYDelta := 3
+	editorYDelta := 2
 
 	if editorLines > 1 {
 		editorYDelta = 2

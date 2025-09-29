@@ -61,6 +61,10 @@ type messagesComponent struct {
 	selection          *selection
 	messagePositions   map[string]int // map message ID to line position
 	animating          bool
+
+	// PERF: Header rendering scans entire history; cache and invalidate explicitly
+	headerDirty     bool
+	lastHeaderWidth int
 }
 
 type selection struct {
@@ -164,6 +168,8 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Clear cache on resize since width affects rendering
 		if m.width != effectiveWidth {
 			m.cache.Clear()
+			// PERF: width change affects header layout; mark dirty
+			m.headerDirty = true
 		}
 		m.width = effectiveWidth
 		m.height = msg.Height - 7
@@ -180,6 +186,7 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case dialog.ThemeSelectedMsg:
 		m.cache.Clear()
+		m.headerDirty = true // PERF: theme affects header rendering
 		m.loading = true
 		return m, m.renderView()
 	case ToggleToolDetailsMsg:
@@ -193,6 +200,7 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case app.SessionLoadedMsg:
 		m.tail = true
 		m.loading = true
+		m.headerDirty = true // PERF: new session history requires header recompute
 		return m, m.renderView()
 	case app.SessionClearedMsg:
 		m.cache.Clear()
@@ -283,6 +291,9 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.header = msg.header
+		// PERF: header was just computed; clear dirty flag and record width
+		m.headerDirty = false
+		m.lastHeaderWidth = m.width
 		if m.dirty {
 			cmds = append(cmds, m.renderView())
 		}
@@ -326,8 +337,13 @@ func (m *messagesComponent) renderView() tea.Cmd {
 	tail := m.tail
 
 	return func() tea.Msg {
-		header := m.renderHeader()
+		// PERF: Recompute header only when explicitly dirty or width changed
+		header := m.header
+		if m.headerDirty || m.lastHeaderWidth != m.width {
+			header = m.renderHeader()
+		}
 		measure := util.Measure("messages.renderView")
+
 		defer measure()
 
 		t := theme.CurrentTheme()
@@ -842,9 +858,13 @@ func (m *messagesComponent) renderView() tea.Cmd {
 			}
 			final = append(final, "")
 		}
-		content := "\n" + strings.Join(final, "\n")
+		// PERF: Avoid O(N) join/split by feeding lines directly
+		lines := make([]string, 0, len(final)+1)
+		lines = append(lines, "")
+		lines = append(lines, final...)
 		viewport.SetHeight(m.height - lipgloss.Height(header))
-		viewport.SetContent(content)
+		viewport.SetContentLines(lines)
+
 		if tail {
 			viewport.GotoBottom()
 		}
