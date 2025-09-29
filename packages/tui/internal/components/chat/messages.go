@@ -803,54 +803,88 @@ func (m *messagesComponent) renderView() tea.Cmd {
 			}
 		}
 
-		final := []string{}
 		clipboard := []string{}
+		// Build or reuse virtualization index
+		if m.indexDirty || len(m.blockContents) == 0 {
+			m.blockContents = blocks
+			m.blockHeights = make([]int, len(blocks))
+			m.blockPrefix = make([]int, len(blocks))
+			p := 1 // leading blank line
+			for i, blk := range blocks {
+				h := lipgloss.Height(blk)
+				m.blockHeights[i] = h
+				m.blockPrefix[i] = p
+				p += h + 1 // inter-block blank line
+			}
+			m.indexDirty = false
+		}
 		var selection *selection
 		if m.selection != nil {
 			selection = m.selection.coords(lipgloss.Height(header) + 1)
 		}
-		for _, block := range blocks {
-			lines := strings.Split(block, "\n")
-			for index, line := range lines {
-				if selection == nil || index == 0 || index == len(lines)-1 {
-					final = append(final, line)
-					continue
-				}
-				y := len(final)
-				if y >= selection.startY && y <= selection.endY {
-					left := 3
-					if y == selection.startY {
-						left = selection.startX - 2
-					}
-					left = max(3, left)
-
-					width := ansi.StringWidth(line)
-					right := width - 1
-					if y == selection.endY {
-						right = min(selection.endX-2, right)
-					}
-
-					prefix := ansi.Cut(line, 0, left)
-					middle := strings.TrimRight(ansi.Strip(ansi.Cut(line, left, right)), " ")
-					suffix := ansi.Cut(line, left+ansi.StringWidth(middle), width)
-					clipboard = append(clipboard, middle)
-					line = prefix + styles.NewStyle().
-						Background(t.Accent()).
-						Foreground(t.BackgroundPanel()).
-						Render(ansi.Strip(middle)) +
-						suffix
-				}
-				final = append(final, line)
-			}
-			y := len(final)
-			if selection != nil && y >= selection.startY && y < selection.endY {
-				clipboard = append(clipboard, "")
-			}
-			final = append(final, "")
+		// Total visible lines: leading blank + sum(heights) + inter-block blanks
+		totalLines := 1
+		for _, h := range m.blockHeights {
+			totalLines += h + 1
 		}
-		content := "\n" + strings.Join(final, "\n")
 		viewport.SetHeight(m.height - lipgloss.Height(header))
-		viewport.SetContent(content)
+		viewport.SetVirtual(totalLines, func(offset int, height int) []string {
+			var out []string
+			if offset < 0 {
+				offset = 0
+			}
+			end := offset + height
+			// Leading blank
+			if offset == 0 {
+				out = append(out, "")
+				offset++
+			}
+			// Find starting block (linear scan)
+			i := 0
+			for i < len(m.blockPrefix) && m.blockPrefix[i]+m.blockHeights[i] <= offset {
+				i++
+			}
+			cur := offset
+			for i < len(m.blockContents) && cur < end {
+				startOfBlock := m.blockPrefix[i]
+				lineInBlock := 0
+				if cur > startOfBlock {
+					lineInBlock = cur - startOfBlock
+				}
+				lines := strings.Split(m.blockContents[i], "\n")
+				for lineInBlock < len(lines) && cur < end {
+					line := lines[lineInBlock]
+					if selection != nil && lineInBlock > 0 && lineInBlock < len(lines)-1 && cur >= selection.startY && cur <= selection.endY {
+						left := 3
+						if cur == selection.startY {
+							left = selection.startX - 2
+						}
+						left = max(3, left)
+						w := ansi.StringWidth(line)
+						right := w - 1
+						if cur == selection.endY {
+							right = min(selection.endX-2, right)
+						}
+						prefix := ansi.Cut(line, 0, left)
+						middle := strings.TrimRight(ansi.Strip(ansi.Cut(line, left, right)), " ")
+						suffix := ansi.Cut(line, left+ansi.StringWidth(middle), w)
+						line = prefix + styles.NewStyle().Background(t.Accent()).Foreground(t.BackgroundPanel()).Render(ansi.Strip(middle)) + suffix
+					}
+					out = append(out, line)
+					lineInBlock++
+					cur++
+				}
+				if cur < end {
+					out = append(out, "")
+					cur++
+				}
+				i++
+			}
+			for len(out) < height {
+				out = append(out, "")
+			}
+			return out
+		})
 		if tail {
 			viewport.GotoBottom()
 		}
