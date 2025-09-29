@@ -1233,9 +1233,13 @@ func (a Model) executeCommand(command commands.Command) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return a, toast.NewErrorToast("Failed to read trace file")
 			}
+<<<<<<< HEAD
 			var payload struct {
 				URL string `json:"url"`
 			}
+=======
+			var payload struct { URL string `json:"url"` }
+>>>>>>> origin/downstream/smarty
 			json.Unmarshal(b, &payload)
 			if payload.URL == "" {
 				return a, toast.NewErrorToast("No URL in trace file")
