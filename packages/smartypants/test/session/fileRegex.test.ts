@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { SessionPrompt } from "../../src/session/prompt"
+import { ConfigMarkdown } from "../../src/config/markdown"
 
 describe("fileRegex", () => {
   const template = `This is a @valid/path/to/a/file and it should also match at
@@ -23,7 +23,7 @@ as well as @~/home-files and @~/paths/under/home.txt.
 
 If the reference is \`@quoted/in/backticks\` then it shouldn't match at all.`
 
-  const matches = Array.from(template.matchAll(SessionPrompt.fileRegex))
+  const matches = Array.from(template.matchAll(ConfigMarkdown.FILE_REGEX))
 
   test("should extract exactly 12 file references", () => {
     expect(matches.length).toBe(12)
@@ -79,13 +79,13 @@ If the reference is \`@quoted/in/backticks\` then it shouldn't match at all.`
 
   test("should not match when preceded by backtick", () => {
     const backtickTest = "This `@should/not/match` should be ignored"
-    const backtickMatches = Array.from(backtickTest.matchAll(SessionPrompt.fileRegex))
+    const backtickMatches = Array.from(backtickTest.matchAll(ConfigMarkdown.FILE_REGEX))
     expect(backtickMatches.length).toBe(0)
   })
 
   test("should not match email addresses", () => {
     const emailTest = "Contact user@example.com for help"
-    const emailMatches = Array.from(emailTest.matchAll(SessionPrompt.fileRegex))
+    const emailMatches = Array.from(emailTest.matchAll(ConfigMarkdown.FILE_REGEX))
     expect(emailMatches.length).toBe(0)
   })
 })
