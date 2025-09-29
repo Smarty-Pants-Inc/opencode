@@ -16,7 +16,7 @@ const glob = await GlobTool.init()
 const list = await ListTool.init()
 
 const projectRoot = path.join(__dirname, "../..")
-const fixturePath = path.join(__dirname, "../fixtures/example")
+// const fixturePath = path.join(__dirname, "../fixtures/example")
 
 describe("tool.glob", () => {
   test("truncate", async () => {
