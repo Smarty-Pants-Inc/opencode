@@ -1,12 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-<<<<<<< HEAD:packages/opencode/package.json
   "version": "0.13.5",
-  "name": "opencode",
-=======
-  "version": "0.11.4",
   "name": "smartypants",
->>>>>>> origin/dev:packages/smartypants/package.json
   "type": "module",
   "private": true,
   "scripts": {
