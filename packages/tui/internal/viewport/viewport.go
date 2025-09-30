@@ -580,7 +580,14 @@ func (m *Model) HalfViewUp() {
 
 // LineDown moves the view down by the given number of lines.
 func (m *Model) LineDown(n int) {
-	if m.AtBottom() || n == 0 || len(m.lines) == 0 {
+	// VIRTUAL RENDERING FIX: Use lineCount() instead of len(m.lines).
+	//
+	// In virtual mode, m.lines is empty (content is fetched via callback), so checking
+	// len(m.lines) == 0 would incorrectly prevent all scrolling. lineCount() returns
+	// virtualTotal in virtual mode, which is the correct total line count.
+	lc := m.lineCount()
+	atBottom := m.AtBottom()
+	if atBottom || n == 0 || lc == 0 {
 		return
 	}
 
@@ -595,7 +602,14 @@ func (m *Model) LineDown(n int) {
 // LineUp moves the view down by the given number of lines. Returns the new
 // lines to show.
 func (m *Model) LineUp(n int) {
-	if m.AtTop() || n == 0 || len(m.lines) == 0 {
+	// VIRTUAL RENDERING FIX: Use lineCount() instead of len(m.lines).
+	//
+	// In virtual mode, m.lines is empty (content is fetched via callback), so checking
+	// len(m.lines) == 0 would incorrectly prevent all scrolling. lineCount() returns
+	// virtualTotal in virtual mode, which is the correct total line count.
+	lc := m.lineCount()
+	atTop := m.AtTop()
+	if atTop || n == 0 || lc == 0 {
 		return
 	}
 
