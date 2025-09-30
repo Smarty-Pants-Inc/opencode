@@ -286,12 +286,15 @@ export namespace SessionPrompt {
               if (m.info.role !== "assistant" || m.info.error === undefined) {
                 return true
               }
-              if (
-                MessageV2.AbortedError.isInstance(m.info.error) &&
-                m.parts.some((part) => part.type !== "step-start" && part.type !== "reasoning")
-              ) {
-                return true
-              }
+              const hasContentfulPart = m.parts.some((part) => {
+                if (part.type === "text") return true
+                if (part.type === "tool") {
+                  const status = (part as any).state?.status
+                  return status === "completed" || status === "error"
+                }
+                return false
+              })
+              if (MessageV2.AbortedError.isInstance(m.info.error) && hasContentfulPart) return true
 
               return false
             }),
