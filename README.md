@@ -3,7 +3,7 @@
     <picture>
       <source srcset="packages/web/src/assets/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/web/src/assets/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/web/src/assets/logo-ornate-light.svg" alt="smartypants logo">
+      <img src="packages/web/src/assets/logo-ornate-light.svg" alt="opencode logo">
     </picture>
   </a>
 </p>
@@ -47,38 +47,6 @@ The install script respects the following priority order for the installation pa
 OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
 XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
 ```
-
-### Smarty Pants Fork Enhancements
-
-This fork adds production-oriented observability, reliability, and UX improvements tailored for Smarty Pants. Highlights:
-
-- Langfuse Observability (Sidecar v4): End-to-end tracing wired through a lightweight Node sidecar that listens to the server’s SSE stream and emits Langfuse GENERATION/TOOL/EVENT spans.
-  - Server auto-starts the sidecar (env-gated via `OPENCODE_OBSERVE=langfuse`), and exposes an `/event` SSE feed.
-  - Session-rooted traces: One root per session; per-assistant message generations are nested for clarity.
-  - Output batching: Streaming deltas are aggregated and stored as a single generation output (no word-per-span noise).
-  - Reasoning only when present: Emits a single reasoning event only if the model returns reasoning/tokens.
-  - Canonical URLs: Finalized trace URL logged back to the server for downstream UIs.
-
-- TUI Integration:
-  - Status bar shows a Langfuse hyperlink; right-aligned near the tab strip with padding.
-  - New “/trace” slash command opens the latest trace URL directly from the TUI.
-  - Exit reliability improvements: fixes to ensure the UI and background goroutines shut down cleanly.
-
-- Server/CLI Reliability:
-  - Sidecar port fix: sidecar connects to the server’s actual bound port (works with `--port 0`).
-  - `/event` SSE stream logs connection/disconnect and publishes bus events.
-  - `run` command prints final assistant text to stdout and exits with explicit status.
-
-- Dev Experience & Guardrails:
-  - Observability is opt-in via `OPENCODE_OBSERVE` gates (`langfuse` or `langfuse-app`).
-  - Reasonable defaults for secrets/env; clean shutdown for the sidecar (OTel `sdk.shutdown()`).
-
-See commit history for detailed changes:
-
-- observe(sidecar): session-rooted traces, output aggregation, reasoning gating
-- server: sidecar autostart + SSE feed; port detection fixes
-- tui: status bar hyperlink, `/trace` command, clean exit behavior
-- cli: robust `run` printing + explicit exit codes
 
 ### Documentation
 
@@ -141,44 +109,49 @@ The other confusingly named repo has no relation to this one. You can [read the 
 
 **Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
 
-## Smarty‑Pants: Local Wrapper Commands (Fork Usage)
+## Smarty‑Pants Fork: Local Wrapper Commands
 
-In the Smarty‑Pants fork, we use two local wrapper commands that run the latest code from our worktrees in `smarty-dev`:
+This repo configures two local wrapper commands that always run the latest code from our worktrees:
 
-- `opencode-fixes` → `<repo-root>/.worktrees/opencode-fixes` (branch: `downstream/fixes`)
-- `smarty` → `<repo-root>/.worktrees/opencode-smarty` (branch: `downstream/smarty`)
+- `opencode-fixes` → `.worktrees/opencode-fixes` (branch: `downstream/fixes`)
+- `smarty` → `.worktrees/opencode-smarty` (branch: `downstream/smarty`)
 
-Wrappers live in `smarty-dev/scripts/` and are exposed on PATH via `~/.local/bin` symlinks:
+They are installed as wrappers in `scripts/` and exposed on PATH via `~/.local/bin` symlinks:
+
+- `~/.local/bin/opencode-fixes` → `<repo>/scripts/opencode-fixes`
+- `~/.local/bin/smarty` → `<repo>/scripts/smarty`
+
+Both wrappers provide:
+- `--where`: print the worktree path, branch, and commit
+- `--switch`: safely switch the worktree to the expected branch (refuses if dirty)
+- Non‑destructive fast‑forward (`ff-only`) — no `reset --hard`, no clobbering
+
+Examples
 
 ```bash
-ln -sf /Users/paulbettner/Projects/smarty-dev/scripts/opencode-fixes ~/.local/bin/opencode-fixes
-ln -sf /Users/paulbettner/Projects/smarty-dev/scripts/smarty ~/.local/bin/smarty
-```
-
-Features:
-- `--where`: print worktree, branch, and commit
-- `--switch`: safely switch to the expected branch (refuses if dirty)
-- ff‑only update (no `reset --hard`)
-
-Usage:
-```bash
-opencode-fixes --where
+opencode-fixes --where     # verify worktree + branch
 smarty --where
-opencode-fixes --switch
-smarty --switch
-opencode-fixes run "whats 2+2?"   # "4" (LLM latency expected)
+
+opencode-fixes --switch    # align to downstream/fixes (requires clean worktree)
+smarty --switch            # align to downstream/smarty
+
+# Non‑interactive single‑shot runs (model latency expected)
+opencode-fixes run "whats 2+2?"
+smarty run "whats 2+2?"
 ```
 
-Temporarily flip to a different worktree while developing:
-- Run the CLI directly from a worktree (no PATH change):
-  ```bash
-  bun --cwd /Users/paulbettner/Projects/smarty-dev/.worktrees/opencode-fixes/packages/opencode ./src/index.ts …
-  bun --cwd /Users/paulbettner/Projects/smarty-dev/.worktrees/opencode-smarty/packages/smartypants ./src/index.ts …
-  ```
-- Or repoint the symlink temporarily (and restore afterward):
-  ```bash
-  ln -sf /path/to/dev-wrapper ~/.local/bin/opencode-fixes
-  ln -sf /Users/paulbettner/Projects/smarty-dev/scripts/opencode-fixes ~/.local/bin/opencode-fixes
-  ```
+Single source of truth + easy flips
+- Single source of truth: keep the wrappers in `<repo>/scripts/` and ensure they’re first on PATH via `~/.local/bin` symlinks.
+- Flip temporarily while developing in another worktree:
+  - Option A (one‑off): run the CLI directly from a worktree:
+    ```bash
+    bun --cwd .worktrees/opencode-fixes/packages/opencode ./src/index.ts …
+    bun --cwd .worktrees/opencode-smarty/packages/smartypants ./src/index.ts …
+    ```
+  - Option B (short‑term): repoint the symlink, then restore:
+    ```bash
+    ln -sf /path/to/dev-wrapper ~/.local/bin/opencode-fixes   # flip
+    ln -sf "$PWD/scripts/opencode-fixes" ~/.local/bin/opencode-fixes  # restore
+    ```
 
-Tip (zsh): add `typeset -U path PATH` to `~/.zshrc` to deduplicate PATH so `which -a` doesn't repeat the same location.
+Tip: In zsh, `typeset -U path PATH` in `~/.zshrc` deduplicates PATH so `which -a` won’t show the same entry multiple times.
