@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "bun@1.2.21",
   "scripts": {
-    "dev": "packages/smartypants/dist/smartypants-darwin-arm64/bin/smartypants",
+    "dev": "mkdir -p dist/smartypants-darwin-arm64/bin && cp -f packages/smartypants/dist/smartypants-darwin-arm64/bin/tui dist/smartypants-darwin-arm64/bin/tui && packages/smartypants/dist/smartypants-darwin-arm64/bin/smartypants",
     "typecheck": "bun turbo typecheck",
     "prepare": "husky"
   },
