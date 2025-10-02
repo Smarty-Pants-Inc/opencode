@@ -1090,6 +1090,9 @@ func (a Model) home() (string, int, int) {
 		editorView,
 		styles.WhitespaceStyle(t.Background()),
 	)
+	lines = append(lines, editorView)
+
+	editorLines := a.editor.Lines()
 
 	mainLayout := lipgloss.Place(
 		effectiveWidth,
@@ -1101,26 +1104,25 @@ func (a Model) home() (string, int, int) {
 	)
 
 	editorX := max(0, (effectiveWidth-editorWidth)/2)
-	editorY := (a.height / 2) + (mainHeight / 2) - 9
-	editorYDelta := 1
+	editorY := (a.height / 2) + (mainHeight / 2) - 5
+	editorYDelta := 3
 
-	// Compute editor lines and set cursor offset
-	editorLines := a.editor.Lines()
 	if editorLines > 1 {
 		editorYDelta = 2
+		content := a.editor.Content()
+		editorHeight := lipgloss.Height(content)
+
+		if editorY+editorHeight > a.height {
+			difference := (editorY + editorHeight) - a.height
+			editorY -= difference
+		}
+		mainLayout = layout.PlaceOverlay(
+			editorX,
+			editorY,
+			content,
+			mainLayout,
+		)
 	}
-	// Overlay the editor view (with cursor) so caret aligns
-	editorHeight := lipgloss.Height(editorView)
-	if editorY+editorHeight > a.height {
-		difference := (editorY + editorHeight) - a.height
-		editorY -= difference
-	}
-	mainLayout = layout.PlaceOverlay(
-		editorX,
-		editorY,
-		editorView,
-		mainLayout,
-	)
 
 	if a.showCompletionDialog {
 		a.completions.SetWidth(editorWidth)
