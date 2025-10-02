@@ -1101,7 +1101,7 @@ func (a Model) home() (string, int, int) {
 	)
 
 	editorX := max(0, (effectiveWidth-editorWidth)/2)
-	editorY := (a.height / 2) + (mainHeight / 2) - 7
+	editorY := (a.height / 2) + (mainHeight / 2) - 9
 	editorYDelta := 3
 
 	// Compute editor lines and set cursor offset
