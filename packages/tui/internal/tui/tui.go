@@ -1105,10 +1105,10 @@ func (a Model) home() (string, int, int) {
 
 	editorX := max(0, (effectiveWidth-editorWidth)/2)
 	editorY := (a.height / 2) + (mainHeight / 2) - 5
-	editorYDelta := 2
+	editorYDelta := 3
 
 	if editorLines > 1 {
-		editorYDelta = 1
+		editorYDelta = 2
 		content := a.editor.Content()
 		editorHeight := lipgloss.Height(content)
 
