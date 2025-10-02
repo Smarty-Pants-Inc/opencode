@@ -4,12 +4,14 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "🔨 Rebuilding smartypants (includes TUI rebuild)..."
-cd packages/smartypants
+cd "$SCRIPT_DIR/packages/smartypants"
 bun run build
 
 echo ""
 echo "✅ Build complete!"
 echo ""
-echo "🚀 Run this to test:"
-echo "   packages/smartypants/dist/smartypants-darwin-arm64/bin/smartypants"
+echo "🚀 ALWAYS provide this FULL PATH to user for testing:"
+echo "   $SCRIPT_DIR/packages/smartypants/dist/smartypants-darwin-arm64/bin/smartypants"
