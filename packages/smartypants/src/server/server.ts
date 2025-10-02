@@ -30,6 +30,8 @@ import { SessionCompaction } from "../session/compaction"
 import { SessionRevert } from "../session/revert"
 import { lazy } from "../util/lazy"
 import { InstanceBootstrap } from "../project/bootstrap"
+import path from "path"
+import fs from "fs/promises"
 
 const ERRORS = {
   400: {
@@ -52,6 +54,29 @@ const ERRORS = {
 
 export namespace Server {
   const log = Log.create({ service: "server" })
+
+  const __lf_sidecar_started = new Set<string>()
+  async function ensureLangfuseSidecar(opts: { directory: string; port: number }) {
+    const env = process.env as Record<string, string | undefined>
+    if (!(env["OPENCODE_OBSERVE"] ?? "").includes("langfuse")) return
+    if (__lf_sidecar_started.has(opts.directory)) return
+    try {
+      const script = new URL("../../../langfuse-sidecar/bin/sidecar.mjs", import.meta.url).pathname
+      const p = Bun.spawn(["node", script], {
+        env: {
+          ...process.env,
+          OPENCODE_SERVER_PORT: String(opts.port),
+          OPENCODE_EVENT_URL: `http://127.0.0.1:${opts.port}/event`,
+        },
+        stdout: "ignore",
+        stderr: "inherit",
+      })
+      __lf_sidecar_started.add(opts.directory)
+      log.info("langfuse sidecar started", { pid: p.pid, port: opts.port })
+    } catch (e) {
+      log.error("failed to start sidecar", { error: e })
+    }
+  }
 
   export const Event = {
     Connected: Bus.event("server.connected", z.object({})),
@@ -956,11 +981,12 @@ export namespace Server {
         ),
         async (c) => {
           const query = c.req.valid("query").query
-          const results = await File.search({
+          const result = await Ripgrep.files({
+            cwd: Instance.directory,
             query,
             limit: 10,
           })
-          return c.json(results)
+          return c.json(result)
         },
       )
       .get(
@@ -1113,6 +1139,30 @@ export namespace Server {
             case "warn":
               logger.warn(message, extra)
               break
+          }
+
+          // Persist Langfuse trace URL for current session (no API shape changes)
+          try {
+            if (
+              service === "langfuse.sidecar" &&
+              message === "generation finalized" &&
+              typeof extra?.["url"] === "string" &&
+              typeof extra?.["sessionID"] === "string"
+            ) {
+              const dir = path.join(Global.Path.state, "observability", "langfuse")
+              await fs.mkdir(dir, { recursive: true })
+              const payload = {
+                sessionID: extra["sessionID"],
+                traceId: extra["traceId"] ?? null,
+                url: extra["url"],
+                messageID: extra["messageID"] ?? null,
+                reason: extra["reason"] ?? null,
+                updated: Date.now(),
+              }
+              await Bun.write(path.join(dir, extra["sessionID"] + ".json"), JSON.stringify(payload, null, 2))
+            }
+          } catch (e) {
+            logger.warn("failed to persist langfuse trace url", { error: String(e) })
           }
 
           return c.json(true)
@@ -1420,6 +1470,9 @@ export namespace Server {
       idleTimeout: 0,
       fetch: App().fetch,
     })
+    const __p: any = (server as any).port
+    const __port: number = typeof __p === "number" && __p > 0 ? __p : opts.port
+    ensureLangfuseSidecar({ directory: Global.Path.state, port: __port }).catch(() => {})
     return server
   }
 }

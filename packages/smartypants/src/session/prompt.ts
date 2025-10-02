@@ -283,16 +283,17 @@ export namespace SessionPrompt {
           ),
           ...MessageV2.toModelMessage(
             msgs.filter((m) => {
-              if (m.info.role !== "assistant" || m.info.error === undefined) {
-                return true
-              }
-              if (
-                MessageV2.AbortedError.isInstance(m.info.error) &&
-                m.parts.some((part) => part.type !== "step-start" && part.type !== "reasoning")
-              ) {
-                return true
-              }
-
+              if (m.info.role !== "assistant") return true
+              if (m.info.error === undefined) return true
+              const hasContentfulPart = m.parts.some((part) => {
+                if (part.type === "text") return true
+                if (part.type === "tool") {
+                  const status = (part as any).state?.status
+                  return status === "completed" || status === "error"
+                }
+                return false
+              })
+              if (MessageV2.AbortedError.isInstance(m.info.error) && hasContentfulPart) return true
               return false
             }),
           ),
@@ -581,15 +582,9 @@ export namespace SessionPrompt {
               }
               break
             case "file:":
-              log.info("file", { mime: part.mime })
               // have to normalize, symbol search returns absolute paths
               // Decode the pathname since URL constructor doesn't automatically decode it
-              const filepath = decodeURIComponent(url.pathname)
-              const stat = await Bun.file(filepath).stat()
-
-              if (stat.isDirectory()) {
-                part.mime = "application/x-directory"
-              }
+              const filePath = decodeURIComponent(url.pathname)
 
               if (part.mime === "text/plain") {
                 let offset: number | undefined = undefined
@@ -626,7 +621,7 @@ export namespace SessionPrompt {
                     limit = end - offset
                   }
                 }
-                const args = { filePath: filepath, offset, limit }
+                const args = { filePath, offset, limit }
                 const result = await ReadTool.init().then((t) =>
                   t.execute(args, {
                     sessionID: input.sessionID,
@@ -664,7 +659,7 @@ export namespace SessionPrompt {
               }
 
               if (part.mime === "application/x-directory") {
-                const args = { path: filepath }
+                const args = { path: filePath }
                 const result = await ListTool.init().then((t) =>
                   t.execute(args, {
                     sessionID: input.sessionID,
@@ -701,15 +696,15 @@ export namespace SessionPrompt {
                 ]
               }
 
-              const file = Bun.file(filepath)
-              FileTime.read(input.sessionID, filepath)
+              const file = Bun.file(filePath)
+              FileTime.read(input.sessionID, filePath)
               return [
                 {
                   id: Identifier.ascending("part"),
                   messageID: info.id,
                   sessionID: input.sessionID,
                   type: "text",
-                  text: `Called the Read tool with the following input: {\"filePath\":\"${filepath}\"}`,
+                  text: `Called the Read tool with the following input: {\"filePath\":\"${filePath}\"}`,
                   synthetic: true,
                 },
                 {
@@ -1114,7 +1109,8 @@ export namespace SessionPrompt {
                 },
               ).toObject()
               break
-            case input.abort.aborted || (e instanceof Error && e.message?.includes("was provided without its required following item")):
+            case input.abort.aborted ||
+              (e instanceof Error && e.message?.includes("was provided without its required following item")):
               // Treat user-initiated interrupt and interrupted OpenAI streaming as a clean abort
               assistantMsg.error = new MessageV2.AbortedError(
                 { message: "Request was aborted" },
