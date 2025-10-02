@@ -1,17 +1,17 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "0.13.7",
-  "name": "opencode",
+  "version": "0.13.5",
+  "name": "smartypants",
   "type": "module",
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
     "build": "./script/build.ts",
-    "dev": "bun run ./src/index.ts"
+    "dev": "bun run --conditions=development ./src/index.ts",
+    "test": "bun test --conditions=development"
   },
   "bin": {
-    "opencode": "./bin/opencode"
+    "smartypants": "./bin/smartypants"
   },
   "exports": {
     "./*": "./src/*.ts"
@@ -34,15 +34,14 @@
     "@hono/zod-validator": "catalog:",
     "@modelcontextprotocol/sdk": "1.15.1",
     "@openauthjs/openauth": "0.4.3",
-    "@opencode-ai/plugin": "workspace:*",
-    "@opencode-ai/sdk": "workspace:*",
+    "@smartypants-ai/plugin": "workspace:*",
+    "@smartypants-ai/sdk": "workspace:*",
     "@standard-schema/spec": "1.0.0",
     "@zip.js/zip.js": "2.7.62",
     "ai": "catalog:",
     "chokidar": "4.0.3",
     "decimal.js": "10.5.0",
     "diff": "8.0.2",
-    "fuzzysort": "3.1.0",
     "gray-matter": "4.0.3",
     "hono": "catalog:",
     "hono-openapi": "1.0.7",
@@ -59,6 +58,10 @@
     "web-tree-sitter": "0.22.6",
     "xdg-basedir": "5.1.0",
     "yargs": "18.0.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@langfuse/tracing": "^4.0.0",
+    "@langfuse/otel": "^4.0.0",
+    "@opentelemetry/sdk-trace-base": "^1.0.0",
+    "langfuse": "^3.38.5"
   }
 }

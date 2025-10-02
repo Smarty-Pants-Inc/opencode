@@ -1,6 +1,6 @@
 {
   "name": "@opencode/app",
-  "version": "0.13.7",
+  "version": "0.13.5",
   "description": "",
   "type": "module",
   "scripts": {
@@ -21,8 +21,8 @@
     "vite-plugin-solid": "^2.11.6"
   },
   "dependencies": {
-    "@kobalte/core": "catalog:",
-    "@opencode-ai/sdk": "workspace:*",
+    "@kobalte/core": "0.13.11",
+    "@smartypants-ai/sdk": "workspace:*",
     "@shikijs/transformers": "3.9.2",
     "@solid-primitives/event-bus": "1.1.2",
     "@solid-primitives/resize-observer": "2.1.3",
