@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "bun@1.2.21",
   "scripts": {
-    "dev": "bun run packages/smartypants/src/index.ts",
+    "dev": "packages/smartypants/dist/smartypants-darwin-arm64/bin/smartypants",
     "typecheck": "bun turbo typecheck",
     "prepare": "husky"
   },
