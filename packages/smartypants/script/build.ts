@@ -45,7 +45,8 @@ for (const [os, arch] of targets) {
       OPENCODE_TUI_PATH: `'../../../dist/${name}/bin/tui'`,
     },
   })
-  await $`rm -rf ./dist/${name}/bin/tui`
+  // Keep TUI binary - don't delete it
+  // await $`rm -rf ./dist/${name}/bin/tui`
   await Bun.file(`dist/${name}/package.json`).write(
     JSON.stringify(
       {
