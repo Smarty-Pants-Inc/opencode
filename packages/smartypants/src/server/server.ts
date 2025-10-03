@@ -981,8 +981,7 @@ export namespace Server {
         ),
         async (c) => {
           const query = c.req.valid("query").query
-          const result = await Ripgrep.files({
-            cwd: Instance.directory,
+          const result = await File.search({
             query,
             limit: 10,
           })
