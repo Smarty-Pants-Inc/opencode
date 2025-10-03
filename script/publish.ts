@@ -40,8 +40,8 @@ for (const file of pkgjsons) {
 }
 await $`bun install`
 
-console.log("\n=== opencode ===\n")
-await import(`../packages/opencode/script/publish.ts`)
+console.log("\n=== smartypants ===\n")
+await import(`../packages/smartypants/script/publish.ts`)
 
 console.log("\n=== sdk ===\n")
 await import(`../packages/sdk/js/script/publish.ts`)
