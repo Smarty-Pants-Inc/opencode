@@ -28,12 +28,12 @@ if (typeof OPENCODE_TUI_PATH !== "undefined") {
 
 export const TuiCommand = cmd({
   command: "$0 [project]",
-  describe: "start opencode tui",
+  describe: `start ${UI.BRAND} tui`,
   builder: (yargs) =>
     yargs
       .positional("project", {
         type: "string",
-        describe: "path to start opencode in",
+        describe: `path to start ${UI.BRAND} in`,
       })
       .option("model", {
         type: "string",
@@ -111,7 +111,7 @@ export const TuiCommand = cmd({
 
         let cmd = [] as string[]
         const tui = Bun.embeddedFiles.find((item) => (item as File).name.includes("tui")) as File
-        if (tui) {
+        if (tui && !Installation.isDev()) {
           let binaryName = tui.name
           if (process.platform === "win32" && !binaryName.endsWith(".exe")) {
             binaryName += ".exe"
@@ -124,8 +124,8 @@ export const TuiCommand = cmd({
           }
           cmd = [binary]
         }
-        if (!tui) {
-          const dir = Bun.fileURLToPath(new URL("../../../../tui/cmd/opencode", import.meta.url))
+        if (!tui || Installation.isDev()) {
+          const dir = Bun.fileURLToPath(new URL("../../../../tui/cmd/smartypants", import.meta.url))
           let binaryName = `./dist/tui${process.platform === "win32" ? ".exe" : ""}`
           await $`go build -o ${binaryName} ./main.go`.cwd(dir)
           cmd = [path.join(dir, binaryName)]
@@ -149,6 +149,7 @@ export const TuiCommand = cmd({
             ...process.env,
             CGO_ENABLED: "0",
             OPENCODE_SERVER: server.url.toString(),
+            BRAND: UI.BRAND,
           },
           onExit: () => {
             server.stop()
@@ -178,8 +179,9 @@ export const TuiCommand = cmd({
             .catch(() => {})
         })()
 
-        await proc.exited
+        const code = await proc.exited
         server.stop()
+        process.exit(typeof code === "number" ? code : 0)
 
         return "done"
       })

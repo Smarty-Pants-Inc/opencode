@@ -18,7 +18,7 @@ Use it to build integrations and control opencode programmatically.
 Install the SDK from npm:
 
 ```bash
-npm install @opencode-ai/sdk
+npm install @smartypants-ai/sdk
 ```
 
 ---
@@ -28,7 +28,7 @@ npm install @opencode-ai/sdk
 Create a client instance to connect to your server:
 
 ```javascript
-import { createOpencodeClient } from "@opencode-ai/sdk"
+import { createOpencodeClient } from "@smartypants-ai/sdk"
 
 const client = createOpencodeClient({
   baseUrl: "http://localhost:4096",
@@ -53,7 +53,7 @@ const client = createOpencodeClient({
 You can also programmatically start an opencode server:
 
 ```javascript
-import { createOpencodeServer } from "@opencode-ai/sdk"
+import { createOpencodeServer } from "@smartypants-ai/sdk"
 
 const server = await createOpencodeServer({
   hostname: "127.0.0.1",
@@ -68,7 +68,7 @@ server.close()
 You can pass a configuration object to customize server behavior. The server still picks up your `opencode.json`, but you can override or add configuration inline:
 
 ```javascript
-import { createOpencodeServer } from "@opencode-ai/sdk"
+import { createOpencodeServer } from "@smartypants-ai/sdk"
 
 const server = await createOpencodeServer({
   hostname: "127.0.0.1",
@@ -100,7 +100,7 @@ server.close()
 The SDK includes TypeScript definitions for all API types. Import them directly:
 
 ```typescript
-import type { Session, Message, Part } from "@opencode-ai/sdk"
+import type { Session, Message, Part } from "@smartypants-ai/sdk"
 ```
 
 All types are generated from the server's OpenAPI specification and available in the <a href={typesUrl}>types file</a>.

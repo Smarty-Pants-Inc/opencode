@@ -24,7 +24,7 @@ const targets = [
 await $`rm -rf dist`
 
 const binaries: Record<string, string> = {}
-const version = process.env["OPENCODE_VERSION"] ?? "dev"
+const version = process.env["SMARTYPANTS_VERSION"] ?? "dev"
 for (const [os, arch] of targets) {
   console.log(`building ${os}-${arch}`)
   const name = `${pkg.name}-${os}-${arch}`

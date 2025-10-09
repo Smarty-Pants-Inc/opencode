@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "0.13.5",
+  "version": "0.11.4",
   "name": "smartypants",
   "type": "module",
   "private": true,

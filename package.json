@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "bun@1.2.21",
   "scripts": {
-    "dev": "mkdir -p dist/smartypants-darwin-arm64/bin && cp -f packages/smartypants/dist/smartypants-darwin-arm64/bin/tui dist/smartypants-darwin-arm64/bin/tui && packages/smartypants/dist/smartypants-darwin-arm64/bin/smartypants",
+    "dev": "bun run --conditions=development packages/smartypants/src/index.ts",
     "typecheck": "bun turbo typecheck",
     "prepare": "husky"
   },
@@ -56,5 +56,10 @@
   ],
   "patchedDependencies": {
     "@solidjs/start@1.1.7": "patches/@solidjs%2Fstart@1.1.7.patch"
+  },
+  "dependencies": {
+    "@langfuse/otel": "4.2.0",
+    "@langfuse/tracing": "4.2.0",
+    "@opentelemetry/sdk-node": "0.205.0"
   }
 }
