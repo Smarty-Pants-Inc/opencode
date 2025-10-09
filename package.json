@@ -1,11 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "opencode",
+  "name": "smartypants",
   "private": true,
   "type": "module",
   "packageManager": "bun@1.2.21",
   "scripts": {
-    "dev": "bun run packages/opencode/src/index.ts",
+    "dev": "bun run --conditions=development packages/smartypants/src/index.ts",
     "typecheck": "bun turbo typecheck",
     "prepare": "husky"
   },
@@ -56,5 +56,10 @@
   ],
   "patchedDependencies": {
     "@solidjs/start@1.1.7": "patches/@solidjs%2Fstart@1.1.7.patch"
+  },
+  "dependencies": {
+    "@langfuse/otel": "4.2.0",
+    "@langfuse/tracing": "4.2.0",
+    "@opentelemetry/sdk-node": "0.205.0"
   }
 }

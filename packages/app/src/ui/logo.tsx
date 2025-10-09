@@ -1,125 +1,143 @@
 import type { ComponentProps } from "solid-js"
 
+// ASCII art generated using: https://patorjk.com/software/taag/
+
 export interface LogoProps extends ComponentProps<"svg"> {
   variant?: "mark" | "full" | "ornate"
   size?: number
+  theme?: "rainbow" | "mono"
 }
 
+// ASCII art definitions from logos.txt
+const ASCII_ART = {
+  mark: [
+    "                    ",
+    " .oooo.o oo.oooo.  ",
+    "d88(  \"8  888' `88b ",
+    '`"Y88b.   88    888 ',
+    "o.  )88b  88bod8P' ",
+    '8""888P\'  888       ',
+    "         o888o      ",
+  ],
+  full: [
+    "                                                  .               ",
+    "                                                .o8               ",
+    " .oooo.o ooo. .oo.  .oo.    .oooo.   oooo d8b .o888oo oooo    ooo ",
+    'd88(  "8 `888P"Y88bP"Y88b  `P  )88b  `888""8P   888    `88.  .8\'  ',
+    '`"Y88b.   888   888   888   .oP"888   888       888     `88..8\'   ',
+    "o.  )88b  888   888   888  d8(  888   888       888 .    `888'    ",
+    '8""888P\' o888o o888o o888o `Y888""8o d888b      "888"     .8\'     ',
+    "                                                      .o..P'      ",
+    "                                                      `Y8P'       ",
+  ],
+}
+
+// Reusable gradient definitions
+const createGradientDefs = (glowIntensity: number = 1) => (
+  <defs>
+    <linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ff0000" />
+      <stop offset="16.66%" style="stop-color:#ff8000" />
+      <stop offset="33.33%" style="stop-color:#ffff00" />
+      <stop offset="50%" style="stop-color:#00ff00" />
+      <stop offset="66.66%" style="stop-color:#0080ff" />
+      <stop offset="83.33%" style="stop-color:#8000ff" />
+      <stop offset="100%" style="stop-color:#ff0080" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation={glowIntensity} result="coloredBlur" />
+      <feMerge>
+        <feMergeNode in="coloredBlur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+)
+
+// Reusable ASCII text component
+const AsciiText = (props: {
+  lines: string[]
+  x: number
+  y: number
+  fontSize: number
+  lineHeight: number
+  fill: string
+  filter?: string
+}) => (
+  <text
+    x={props.x}
+    y={props.y}
+    font-family="monospace"
+    font-size={`${props.fontSize}`}
+    font-weight="bold"
+    fill={props.fill}
+    filter={props.filter}
+    style="white-space: pre"
+  >
+    {props.lines.map((line, index) => (
+      <tspan x={props.x} dy={index === 0 ? "0" : props.lineHeight}>
+        {line}
+      </tspan>
+    ))}
+  </text>
+)
+
 export function Logo(props: LogoProps) {
-  const { variant = "mark", size = 64, ...others } = props
+  const { variant = "mark", size = 64, theme = "rainbow", ...others } = props
+
+  const fillColor = theme === "rainbow" ? "url(#rainbow)" : "currentColor"
+  const shouldUseFilter = theme === "rainbow"
 
   if (variant === "mark") {
     return (
       <svg
         width={size}
-        height={size * (42 / 64)}
-        viewBox="0 0 64 42"
+        height={size * 0.5} // Compact ratio for "sp"
+        viewBox="0 0 160 80"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         class={`text-text ${props.class ?? ""}`}
         {...others}
       >
-        <path
-          fill-rule="evenodd"
-          clip-rule="evenodd"
-          d="M0 0H32V41.5955H0V0ZM24 8.5H8V33H24V8.5Z"
-          fill="currentColor"
+        {shouldUseFilter && createGradientDefs(1)}
+        <AsciiText
+          lines={ASCII_ART.mark}
+          x={5}
+          y={15}
+          fontSize={8}
+          lineHeight={10}
+          fill={fillColor}
+          filter={shouldUseFilter ? "url(#glow)" : undefined}
         />
-        <path d="M40 0H64V8.5H48V33H64V41.5H40V0Z" fill="currentColor" />
       </svg>
     )
   }
 
-  if (variant === "full") {
-    return (
-      <svg
-        width={size * (289 / 42)}
-        height={size}
-        viewBox="0 0 289 42"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        {...others}
-      >
-        <path d="M264.5 0H288.5V8.5H272.5V16.5H288.5V25H272.5V33H288.5V41.5H264.5V0Z" fill="currentColor" />
-        <path d="M248.5 0H224.5V41.5H248.5V33H232.5V8.5H248.5V0Z" fill="currentColor" />
-        <path d="M256.5 8.5H248.5V33H256.5V8.5Z" fill="currentColor" />
-        <path
-          fill-rule="evenodd"
-          clip-rule="evenodd"
-          d="M184.5 0H216.5V41.5H184.5V0ZM208.5 8.5H192.5V33H208.5V8.5Z"
-          fill="currentColor"
-        />
-        <path d="M144.5 8.5H136.5V41.5H144.5V8.5Z" fill="currentColor" />
-        <path d="M136.5 0H112.5V41.5H120.5V8.5H136.5V0Z" fill="currentColor" />
-        <path d="M80.5 0H104.5V8.5H88.5V16.5H104.5V25H88.5V33H104.5V41.5H80.5V0Z" fill="currentColor" />
-        <path
-          fill-rule="evenodd"
-          clip-rule="evenodd"
-          d="M40.5 0H72.5V41.5H48.5V49.5H40.5V0ZM64.5 8.5H48.5V33H64.5V8.5Z"
-          fill="currentColor"
-        />
-        <path
-          fill-rule="evenodd"
-          clip-rule="evenodd"
-          d="M0.5 0H32.5V41.5955H0.5V0ZM24.5 8.5H8.5V33H24.5V8.5Z"
-          fill="currentColor"
-        />
-        <path d="M152.5 0H176.5V8.5H160.5V33H176.5V41.5H152.5V0Z" fill="currentColor" />
-      </svg>
-    )
-  }
+  // Full and ornate variants share the same structure
+  const isOrnate = variant === "ornate"
+  const glowIntensity = isOrnate ? 3 : 1
+  const aspectRatio = 500 / 140 // Adjusted for new ASCII art
+  const scaledWidth = size * aspectRatio
 
   return (
     <svg
-      width={size * (289 / 42)}
+      width={scaledWidth}
       height={size}
-      viewBox="0 0 289 50"
+      viewBox="0 0 500 140"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       {...others}
     >
-      <path d="M8.5 16.5H24.5V33H8.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M48.5 16.5H64.5V33H48.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M120.5 16.5H136.5V33H120.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M160.5 16.5H176.5V33H160.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M192.5 16.5H208.5V33H192.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path d="M232.5 16.5H248.5V33H232.5V16.5Z" fill="currentColor" fill-opacity="0.2" />
-      <path
-        d="M264.5 0H288.5V8.5H272.5V16.5H288.5V25H272.5V33H288.5V41.5H264.5V0Z"
-        fill="currentColor"
-        fill-opacity="0.95"
+      {shouldUseFilter && createGradientDefs(glowIntensity)}
+      <AsciiText
+        lines={ASCII_ART.full}
+        x={5}
+        y={20}
+        fontSize={10}
+        lineHeight={12}
+        fill={fillColor}
+        filter={shouldUseFilter ? "url(#glow)" : undefined}
       />
-      <path d="M248.5 0H224.5V41.5H248.5V33H232.5V8.5H248.5V0Z" fill="currentColor" fill-opacity="0.95" />
-      <path d="M256.5 8.5H248.5V33H256.5V8.5Z" fill="currentColor" fill-opacity="0.95" />
-      <path
-        fill-rule="evenodd"
-        clip-rule="evenodd"
-        d="M184.5 0H216.5V41.5H184.5V0ZM208.5 8.5H192.5V33H208.5V8.5Z"
-        fill="currentColor"
-        fill-opacity="0.95"
-      />
-      <path d="M144.5 8.5H136.5V41.5H144.5V8.5Z" fill="currentColor" fill-opacity="0.5" />
-      <path d="M136.5 0H112.5V41.5H120.5V8.5H136.5V0Z" fill="currentColor" fill-opacity="0.5" />
-      <path
-        d="M80.5 0H104.5V8.5H88.5V16.5H104.5V25H88.5V33H104.5V41.5H80.5V0Z"
-        fill="currentColor"
-        fill-opacity="0.5"
-      />
-      <path
-        fill-rule="evenodd"
-        clip-rule="evenodd"
-        d="M40.5 0H72.5V41.5H48.5V49.5H40.5V0ZM64.5 8.5H48.5V33H64.5V8.5Z"
-        fill="currentColor"
-        fill-opacity="0.5"
-      />
-      <path
-        fill-rule="evenodd"
-        clip-rule="evenodd"
-        d="M0.5 0H32.5V41.5955H0.5V0ZM24.5 8.5H8.5V33H24.5V8.5Z"
-        fill="currentColor"
-        fill-opacity="0.5"
-      />
-      <path d="M152.5 0H176.5V8.5H160.5V33H176.5V41.5H152.5V0Z" fill="currentColor" fill-opacity="0.95" />
     </svg>
   )
 }

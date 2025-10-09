@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -14,6 +16,7 @@ import (
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/charmbracelet/lipgloss/v2/compat"
 
 	"github.com/sst/opencode-sdk-go"
 	"github.com/sst/opencode/internal/api"
@@ -456,8 +459,12 @@ func (a Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case dialog.CompletionDialogCloseMsg:
 		a.showCompletionDialog = false
 	case opencode.EventListResponseEventInstallationUpdated:
+		brand := os.Getenv("BRAND")
+		if brand == "" {
+			brand = "smarty"
+		}
 		return a, toast.NewSuccessToast(
-			"opencode updated to "+msg.Properties.Version+", restart to apply.",
+			brand+" updated to "+msg.Properties.Version+", restart to apply.",
 			toast.WithTitle("New version installed"),
 		)
 		/*
@@ -981,25 +988,51 @@ func (a Model) home() (string, int, int) {
 	t := theme.CurrentTheme()
 	effectiveWidth := a.width - 4
 	baseStyle := styles.NewStyle().Foreground(t.Text()).Background(t.Background())
-	base := baseStyle.Render
 	muted := styles.NewStyle().Foreground(t.TextMuted()).Background(t.Background()).Render
 
-	open := `
-                    
-█▀▀█ █▀▀█ █▀▀█ █▀▀▄ 
-█░░█ █░░█ █▀▀▀ █░░█ 
-▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀  ▀ `
+	open := ""
 
-	code := `
-             ▄
-█▀▀▀ █▀▀█ █▀▀█ █▀▀█
-█░░░ █░░█ █░░█ █▀▀▀
-▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀`
+	code := "                                                   .               \n" +
+		"                                                 .o8               \n" +
+		"  .oooo.o ooo. .oo.  .oo.    .oooo.   oooo d8b .o888oo oooo    ooo \n" +
+		" d88(  \"8 `888P\"Y88bP\"Y88b  `P  )88b  `888\"\"8P   888    `88.  .8'  \n" +
+		" `\"Y88b.   888   888   888   .oP\"888   888       888     `88..8'   \n" +
+		" o.  )88b  888   888   888  d8(  888   888       888 .    `888'    \n" +
+		" 8\"\"888P' o888o o888o o888o `Y888\"\"8o d888b      \"888\"     .8'     \n" +
+		"                                                       .o..P'      \n" +
+		"                                                       `Y8P'       "
+
+	// Render rainbow gradient across the ASCII logo
+	renderRainbow := func(s string) string {
+		colors := []string{"#ff0000", "#ff7f00", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#8b00ff"}
+		lines := strings.Split(s, "\n")
+		var out []string
+		for _, line := range lines {
+			runes := []rune(line)
+			w := len(runes)
+			if w == 0 {
+				out = append(out, "")
+				continue
+			}
+			var b strings.Builder
+			for x, r := range runes {
+				if r == ' ' {
+					b.WriteRune(' ')
+					continue
+				}
+				idx := int(float64(x) / float64(max(w-1, 1)) * float64(len(colors)-1))
+				st := styles.NewStyle().Foreground(compat.AdaptiveColor{Dark: lipgloss.Color(colors[idx]), Light: lipgloss.Color(colors[idx])}).Background(t.Background())
+				b.WriteString(st.Render(string(r)))
+			}
+			out = append(out, b.String())
+		}
+		return strings.Join(out, "\n")
+	}
 
 	logo := lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		muted(open),
-		base(code),
+		renderRainbow(code),
 	)
 	// cwd := app.Info.Path.Cwd
 	// config := app.Info.Path.Config
@@ -1057,9 +1090,6 @@ func (a Model) home() (string, int, int) {
 		editorView,
 		styles.WhitespaceStyle(t.Background()),
 	)
-	lines = append(lines, editorView)
-
-	editorLines := a.editor.Lines()
 
 	mainLayout := lipgloss.Place(
 		effectiveWidth,
@@ -1074,22 +1104,23 @@ func (a Model) home() (string, int, int) {
 	editorY := (a.height / 2) + (mainHeight / 2) - 3
 	editorYDelta := 3
 
+	// Compute editor lines and set cursor offset
+	editorLines := a.editor.Lines()
 	if editorLines > 1 {
 		editorYDelta = 2
-		content := a.editor.Content()
-		editorHeight := lipgloss.Height(content)
-
-		if editorY+editorHeight > a.height {
-			difference := (editorY + editorHeight) - a.height
-			editorY -= difference
-		}
-		mainLayout = layout.PlaceOverlay(
-			editorX,
-			editorY,
-			content,
-			mainLayout,
-		)
 	}
+	// Overlay the editor view (with cursor) so caret aligns
+	editorHeight := lipgloss.Height(editorView)
+	if editorY+editorHeight > a.height {
+		difference := (editorY + editorHeight) - a.height
+		editorY -= difference
+	}
+	mainLayout = layout.PlaceOverlay(
+		editorX,
+		editorY,
+		editorView,
+		mainLayout,
+	)
 
 	if a.showCompletionDialog {
 		a.completions.SetWidth(editorWidth)
@@ -1165,6 +1196,65 @@ func (a Model) executeCommand(command commands.Command) (tea.Model, tea.Cmd) {
 		util.CmdHandler(commands.CommandExecutedMsg(command)),
 	}
 	switch command.Name {
+	case commands.TraceOpenCommand:
+		{
+			stateHome := os.Getenv("XDG_STATE_HOME")
+			if stateHome == "" {
+				home, _ := os.UserHomeDir()
+				stateHome = filepath.Join(home, ".local", "state")
+			}
+			dir := filepath.Join(stateHome, "opencode", "observability", "langfuse")
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				return a, toast.NewErrorToast("Langfuse state not found: " + dir)
+			}
+			var latestPath string
+			var latestTime time.Time
+			for _, e := range entries {
+				if e.IsDir() {
+					continue
+				}
+				if !strings.HasSuffix(e.Name(), ".json") {
+					continue
+				}
+				info, err := e.Info()
+				if err != nil {
+					continue
+				}
+				if info.ModTime().After(latestTime) {
+					latestTime = info.ModTime()
+					latestPath = filepath.Join(dir, e.Name())
+				}
+			}
+			if latestPath == "" {
+				return a, toast.NewInfoToast("No Langfuse traces yet")
+			}
+			b, err := os.ReadFile(latestPath)
+			if err != nil {
+				return a, toast.NewErrorToast("Failed to read trace file")
+			}
+			var payload struct {
+				URL string `json:"url"`
+			}
+			json.Unmarshal(b, &payload)
+			if payload.URL == "" {
+				return a, toast.NewErrorToast("No URL in trace file")
+			}
+			var openCmd *exec.Cmd
+			switch runtime.GOOS {
+			case "darwin":
+				openCmd = exec.Command("open", payload.URL)
+			case "linux":
+				openCmd = exec.Command("xdg-open", payload.URL)
+			case "windows":
+				openCmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", payload.URL)
+			default:
+				openCmd = exec.Command("open", payload.URL)
+			}
+			_ = openCmd.Start()
+			cmds = append(cmds, toast.NewInfoToast("Opening Langfuse trace"))
+		}
+
 	case commands.AppHelpCommand:
 		helpDialog := dialog.NewHelpDialog(a.app)
 		a.modal = helpDialog
