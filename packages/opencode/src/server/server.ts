@@ -1433,7 +1433,7 @@ export namespace Server {
           title: UI.brand(),
           version: "1.0.0",
           description: `${UI.brand()} api`,
-              title: UI.brand(),
+          title: UI.brand(),
           description: `${UI.brand()} api`,
         },
         openapi: "3.1.1",

@@ -77,9 +77,9 @@ export namespace UI {
     println(Style.TEXT_DANGER_BOLD + "Error: " + Style.TEXT_NORMAL + message)
   }
 
-export function markdown(text: string): string {
-  return text
-}
+  export function markdown(text: string): string {
+    return text
+  }
   // Return the current CLI brand based on environment; defaults to opencode
   export function brand(): string {
     const env = process.env as Record<string, string | undefined>
