@@ -1107,7 +1107,8 @@ export namespace SessionPrompt {
                 },
               ).toObject()
               break
-            case input.abort.aborted || (e instanceof Error && e.message?.includes("was provided without its required following item")):
+            case input.abort.aborted ||
+              (e instanceof Error && e.message?.includes("was provided without its required following item")):
               // Treat user-initiated interrupt and interrupted OpenAI streaming as a clean abort
               assistantMsg.error = new MessageV2.AbortedError(
                 { message: "Request was aborted" },
