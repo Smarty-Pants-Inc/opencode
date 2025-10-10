@@ -57,7 +57,9 @@ try {
             const p = evt?.properties as any
             const sid = p?.sessionID || p?.info?.sessionID || p?.part?.sessionID
             if (sid) {
-              try { updateActiveTrace({ sessionId: String(sid) }) } catch {}
+              try {
+                updateActiveTrace({ sessionId: String(sid) })
+              } catch {}
             }
             const t = evt.type as string
 
@@ -77,7 +79,10 @@ try {
               }
               if (part.type === "tool") {
                 if (part.state.status === "pending" || part.state.status === "running") {
-                  const s = startObservation(`tool:${part.tool}`, { input: part.state.input, metadata: { callID: part.callID } })
+                  const s = startObservation(`tool:${part.tool}`, {
+                    input: part.state.input,
+                    metadata: { callID: part.callID },
+                  })
                   toolObs.set(part.callID, s)
                   return
                 }
@@ -107,7 +112,9 @@ try {
                 return
               }
               if (part.type === "file") {
-                const s = startObservation("file", { input: { mime: part.mime, filename: part.filename, url: part.url } })
+                const s = startObservation("file", {
+                  input: { mime: part.mime, filename: part.filename, url: part.url },
+                })
                 s.end()
                 return
               }
@@ -119,7 +126,10 @@ try {
             if (t === "message.updated" && p?.info) {
               const info = p.info as any
               if (info.role === "assistant") {
-                const s = startObservation("assistant", { type: "GENERATION", metadata: { providerID: info.providerID, modelID: info.modelID } })
+                const s = startObservation("assistant", {
+                  type: "GENERATION",
+                  metadata: { providerID: info.providerID, modelID: info.modelID },
+                })
                 s.update({ metadata: { tokens: info.tokens, cost: info.cost } })
                 s.end()
                 return
