@@ -27,7 +27,9 @@ function sanitizeFileUrl(u) {
 
 async function initOtel() {
   const sdk = new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor()] })
-  try { await Promise.resolve(sdk.start()) } catch {}
+  try {
+    await Promise.resolve(sdk.start())
+  } catch {}
 }
 
 function eventUrl() {
@@ -59,7 +61,9 @@ async function connectAndStream(url) {
 
     startActiveObservation(`opencode:${t}`, async () => {
       if (sid) {
-        try { updateActiveTrace({ sessionId: String(sid) }) } catch {}
+        try {
+          updateActiveTrace({ sessionId: String(sid) })
+        } catch {}
       }
 
       if (t === "message.part.updated" && p?.part) {
@@ -85,7 +89,11 @@ async function connectAndStream(url) {
         }
         if (part.type === "tool") {
           if (part.state.status === "pending" || part.state.status === "running") {
-            const s = startObservation(`tool:${part.tool}`, { type: "TOOL", input: part.state.input, metadata: { callID: part.callID } })
+            const s = startObservation(`tool:${part.tool}`, {
+              type: "TOOL",
+              input: part.state.input,
+              metadata: { callID: part.callID },
+            })
             toolObs.set(part.callID, s)
             return
           }
@@ -105,7 +113,11 @@ async function connectAndStream(url) {
           }
         }
         if (part.type === "text") {
-          const s = startObservation("text", { type: "EVENT", input: { text: sanitizeText(part.text) }, metadata: { messageID: part.messageID } })
+          const s = startObservation("text", {
+            type: "EVENT",
+            input: { text: sanitizeText(part.text) },
+            metadata: { messageID: part.messageID },
+          })
           s.end()
           // accumulate into either user or assistant generation
           if (sid) {
@@ -123,12 +135,20 @@ async function connectAndStream(url) {
           return
         }
         if (part.type === "reasoning") {
-          const s = startObservation("reasoning", { type: "EVENT", input: { text: sanitizeText(part.text) }, metadata: { ...part.metadata, messageID: part.messageID } })
+          const s = startObservation("reasoning", {
+            type: "EVENT",
+            input: { text: sanitizeText(part.text) },
+            metadata: { ...part.metadata, messageID: part.messageID },
+          })
           s.end()
           return
         }
         if (part.type === "file") {
-          const s = startObservation("file", { type: "EVENT", input: { mime: part.mime, filename: part.filename, url: sanitizeFileUrl(part.url) }, metadata: { messageID: part.messageID } })
+          const s = startObservation("file", {
+            type: "EVENT",
+            input: { mime: part.mime, filename: part.filename, url: sanitizeFileUrl(part.url) },
+            metadata: { messageID: part.messageID },
+          })
           s.end()
           return
         }
@@ -145,7 +165,11 @@ async function connectAndStream(url) {
             const u = userBySession.get(sid)
             inputText = u?.text
           }
-          const s = startObservation("assistant", { type: "GENERATION", input: inputText ? { text: sanitizeText(inputText) } : undefined, metadata: { providerID: info.providerID, modelID: info.modelID } })
+          const s = startObservation("assistant", {
+            type: "GENERATION",
+            input: inputText ? { text: sanitizeText(inputText) } : undefined,
+            metadata: { providerID: info.providerID, modelID: info.modelID },
+          })
           s.update({ metadata: { tokens: info.tokens, cost: info.cost } })
           genByMsg.set(info.id, { obs: s, out: "" })
           return
