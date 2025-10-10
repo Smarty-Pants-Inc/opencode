@@ -81,3 +81,9 @@ export namespace UI {
     return text
   }
 }
+
+  // Return the current CLI brand based on environment; defaults to opencode
+  export function brand(): string {
+    const env = process.env as Record<string, string | undefined>
+    return env["BRAND"] ?? "opencode"
+  }

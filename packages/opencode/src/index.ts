@@ -168,7 +168,7 @@ process.on("uncaughtException", (e) => {
 })
 
 const cli = yargs(hideBin(process.argv))
-  .scriptName("opencode")
+  .scriptName(UI.brand())
   .help("help", "show help")
   .version("version", "show version number", Installation.VERSION)
   .alias("version", "v")

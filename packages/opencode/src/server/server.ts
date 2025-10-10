@@ -1,3 +1,4 @@
+import { UI } from "../cli/ui"
 import { Log } from "../util/log"
 import { Bus } from "../bus"
 import { describeRoute, generateSpecs, validator, resolver, openAPIRouteHandler } from "hono-openapi"
@@ -128,9 +129,11 @@ export namespace Server {
         openAPIRouteHandler(app, {
           documentation: {
             info: {
-              title: "opencode",
+              title: UI.brand(),
               version: "0.0.3",
-              description: "opencode api",
+              description: `${UI.brand()} api`,
+              title: UI.brand(),
+              description: `${UI.brand()} api`,
             },
             openapi: "3.1.1",
           },
@@ -1427,9 +1430,11 @@ export namespace Server {
     const result = await generateSpecs(App(), {
       documentation: {
         info: {
-          title: "opencode",
+          title: UI.brand(),
           version: "1.0.0",
-          description: "opencode api",
+          description: `${UI.brand()} api`,
+              title: UI.brand(),
+          description: `${UI.brand()} api`,
         },
         openapi: "3.1.1",
       },
