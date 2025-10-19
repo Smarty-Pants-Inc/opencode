@@ -1,12 +1,14 @@
 name: Guidelines Check
 
 on:
-  # Disabled - uncomment to re-enable
+  # Disabled - uncomment to re-enable PR trigger
   # pull_request_target:
   #   types: [opened, synchronize]
+  workflow_dispatch:
 
 jobs:
   check-guidelines:
+    if: ${{ github.repository == 'sst/opencode' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
