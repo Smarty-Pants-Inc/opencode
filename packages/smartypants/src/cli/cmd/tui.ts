@@ -130,20 +130,12 @@ export const TuiCommand = cmd({
         }
         if (!tui || Installation.isDev()) {
           const dir = Bun.fileURLToPath(new URL("../../../../tui/cmd/smartypants", import.meta.url))
-          const prebuiltDir = Bun.fileURLToPath(new URL("../../../../tui", import.meta.url))
           const exe = process.platform === "win32" ? ".exe" : ""
-          const prebuilt = path.join(prebuiltDir, `smartypants${exe}`)
-          const pbFile = Bun.file(prebuilt)
-          if (await pbFile.exists()) {
-            try { if (process.platform !== "win32") await fs.chmod(prebuilt, 0o755) } catch {}
-            cmd = [prebuilt]
-          } else {
-            let binaryName = `./dist/tui${exe}`
-            await fs.mkdir(path.join(dir, "dist"), { recursive: true })
-            const envPath = ["/opt/homebrew/bin", "/usr/local/go/bin", process.env["PATH"]].filter(Boolean).join(":")
-            await $`go build -o ${binaryName} ./main.go`.cwd(dir).env({ ...process.env, PATH: envPath })
-            cmd = [path.join(dir, binaryName)]
-          }
+          let binaryName = `./dist/tui${exe}`
+          await fs.mkdir(path.join(dir, "dist"), { recursive: true })
+          const envPath = ["/opt/homebrew/bin", "/usr/local/go/bin", process.env["PATH"]].filter(Boolean).join(":")
+          await $`go build -o ${binaryName} ./main.go`.cwd(dir).env({ ...process.env, PATH: envPath })
+          cmd = [path.join(dir, binaryName)]
         }
         Log.Default.info("tui", {
           cmd,
