@@ -1,0 +1,4 @@
+# Keep opencode branding defaults in downstream/fixes during merges
+packages/smartypants/src/cli/ui.ts merge=ours
+packages/tui/internal/tui/tui.go merge=ours
+packages/tui/internal/components/status/status.go merge=ours
