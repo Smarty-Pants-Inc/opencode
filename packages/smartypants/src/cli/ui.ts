@@ -4,20 +4,12 @@ import { NamedError } from "../util/error"
 
 export namespace UI {
   const LOGO = [
-    "                                                   .               ",
-    "                                                 .o8               ",
-    "  .oooo.o ooo. .oo.  .oo.    .oooo.   oooo d8b .o888oo oooo    ooo ",
-    ' d88(  "8 `888P"Y88bP"Y88b  `P  )88b  `888""8P   888    `88.  .8\'  ',
-    ' `"Y88b.   888   888   888   .oP"888   888       888     `88..8\'   ',
-    " o.  )88b  888   888   888  d8(  888   888       888 .    `888'    ",
-    ' 8""888P\' o888o o888o o888o `Y888""8o d888b      "888"     .8\'     ',
-    "                                                       .o..P'      ",
-    "                                                       `Y8P'       ",
+    "OPENCODE",
   ]
 
   export const CancelledError = NamedError.create("UICancelledError", z.void())
 
-  export const BRAND = process.env["BRAND"] ?? "smarty"
+  export const BRAND = process.env["BRAND"] ?? "opencode"
 
   export const Style = {
     TEXT_HIGHLIGHT: "\x1b[96m",

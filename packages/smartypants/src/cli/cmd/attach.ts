@@ -49,7 +49,7 @@ export const AttachCommand = cmd({
         ...process.env,
         CGO_ENABLED: "0",
         OPENCODE_SERVER: args.server,
-        BRAND: process.env["BRAND"] ?? "smarty",
+        BRAND: UI.BRAND,
       },
     })
 

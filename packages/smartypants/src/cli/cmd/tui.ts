@@ -113,10 +113,14 @@ export const TuiCommand = cmd({
         const tui = Bun.embeddedFiles.find((item) => (item as File).name.includes("tui")) as File
         if (tui && !Installation.isDev()) {
           let binaryName = tui.name
+          // Ensure we do not treat the embedded name as an absolute path
+          binaryName = path.basename(binaryName)
           if (process.platform === "win32" && !binaryName.endsWith(".exe")) {
             binaryName += ".exe"
           }
-          const binary = path.join(Global.Path.cache, "tui", binaryName)
+          const outDir = path.join(Global.Path.cache, "tui")
+          await fs.mkdir(outDir, { recursive: true }).catch(() => {})
+          const binary = path.join(outDir, binaryName)
           const file = Bun.file(binary)
           if (!(await file.exists())) {
             await Bun.write(file, tui, { mode: 0o755 })
@@ -126,9 +130,20 @@ export const TuiCommand = cmd({
         }
         if (!tui || Installation.isDev()) {
           const dir = Bun.fileURLToPath(new URL("../../../../tui/cmd/smartypants", import.meta.url))
-          let binaryName = `./dist/tui${process.platform === "win32" ? ".exe" : ""}`
-          await $`go build -o ${binaryName} ./main.go`.cwd(dir)
-          cmd = [path.join(dir, binaryName)]
+          const prebuiltDir = Bun.fileURLToPath(new URL("../../../../tui", import.meta.url))
+          const exe = process.platform === "win32" ? ".exe" : ""
+          const prebuilt = path.join(prebuiltDir, `smartypants${exe}`)
+          const pbFile = Bun.file(prebuilt)
+          if (await pbFile.exists()) {
+            try { if (process.platform !== "win32") await fs.chmod(prebuilt, 0o755) } catch {}
+            cmd = [prebuilt]
+          } else {
+            let binaryName = `./dist/tui${exe}`
+            await fs.mkdir(path.join(dir, "dist"), { recursive: true })
+            const envPath = ["/opt/homebrew/bin", "/usr/local/go/bin", process.env["PATH"]].filter(Boolean).join(":")
+            await $`go build -o ${binaryName} ./main.go`.cwd(dir).env({ ...process.env, PATH: envPath })
+            cmd = [path.join(dir, binaryName)]
+          }
         }
         Log.Default.info("tui", {
           cmd,

@@ -62,6 +62,10 @@ export namespace ModelsDev {
   }
 
   export async function refresh() {
+    // Allow disabling models.dev refresh in non-interactive/CI runs to avoid network stalls
+    if ((process.env["OPENCODE_DISABLE_MODELS_REFRESH"] ?? "").match(/^(1|true)$/i)) {
+      return
+    }
     const file = Bun.file(filepath)
     log.info("refreshing", {
       file,

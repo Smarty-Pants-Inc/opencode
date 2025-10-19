@@ -461,7 +461,7 @@ func (a Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case opencode.EventListResponseEventInstallationUpdated:
 		brand := os.Getenv("BRAND")
 		if brand == "" {
-			brand = "smarty"
+			brand = "opencode"
 		}
 		return a, toast.NewSuccessToast(
 			brand+" updated to "+msg.Properties.Version+", restart to apply.",
@@ -992,15 +992,7 @@ func (a Model) home() (string, int, int) {
 
 	open := ""
 
-	code := "                                                   .               \n" +
-		"                                                 .o8               \n" +
-		"  .oooo.o ooo. .oo.  .oo.    .oooo.   oooo d8b .o888oo oooo    ooo \n" +
-		" d88(  \"8 `888P\"Y88bP\"Y88b  `P  )88b  `888\"\"8P   888    `88.  .8'  \n" +
-		" `\"Y88b.   888   888   888   .oP\"888   888       888     `88..8'   \n" +
-		" o.  )88b  888   888   888  d8(  888   888       888 .    `888'    \n" +
-		" 8\"\"888P' o888o o888o o888o `Y888\"\"8o d888b      \"888\"     .8'     \n" +
-		"                                                       .o..P'      \n" +
-		"                                                       `Y8P'       "
+	code := "OPENCODE"
 
 	// Render rainbow gradient across the ASCII logo
 	renderRainbow := func(s string) string {
