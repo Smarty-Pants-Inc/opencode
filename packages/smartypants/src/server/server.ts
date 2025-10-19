@@ -131,11 +131,9 @@ export namespace Server {
         openAPIRouteHandler(app, {
           documentation: {
             info: {
-              title: UI.brand(),
+              title: UI.BRAND,
               version: "0.0.3",
-              description: `${UI.brand()} api`,
-              title: UI.brand(),
-              description: `${UI.brand()} api`,
+              description: `${UI.BRAND} api`,
             },
             openapi: "3.1.1",
           },
@@ -1456,11 +1454,9 @@ export namespace Server {
     const result = await generateSpecs(App(), {
       documentation: {
         info: {
-          title: UI.brand(),
-          version: "1.0.0",
-          description: `${UI.brand()} api`,
-              title: UI.brand(),
-          description: `${UI.brand()} api`,
+           title: UI.BRAND,
+           version: "1.0.0",
+           description: `${UI.BRAND} api`,
         },
         openapi: "3.1.1",
       },
