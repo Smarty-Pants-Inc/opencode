@@ -16,7 +16,6 @@ import (
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
-	"github.com/charmbracelet/lipgloss/v2/compat"
 
 	"github.com/sst/opencode-sdk-go"
 	"github.com/sst/opencode/internal/api"
@@ -994,37 +993,13 @@ func (a Model) home() (string, int, int) {
 
 	code := "OPENCODE"
 
-	// Render rainbow gradient across the ASCII logo
-	renderRainbow := func(s string) string {
-		colors := []string{"#ff0000", "#ff7f00", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#8b00ff"}
-		lines := strings.Split(s, "\n")
-		var out []string
-		for _, line := range lines {
-			runes := []rune(line)
-			w := len(runes)
-			if w == 0 {
-				out = append(out, "")
-				continue
-			}
-			var b strings.Builder
-			for x, r := range runes {
-				if r == ' ' {
-					b.WriteRune(' ')
-					continue
-				}
-				idx := int(float64(x) / float64(max(w-1, 1)) * float64(len(colors)-1))
-				st := styles.NewStyle().Foreground(compat.AdaptiveColor{Dark: lipgloss.Color(colors[idx]), Light: lipgloss.Color(colors[idx])}).Background(t.Background())
-				b.WriteString(st.Render(string(r)))
-			}
-			out = append(out, b.String())
-		}
-		return strings.Join(out, "\n")
-	}
+	// Render logo in primary color (no gradient in fixes)
+	styleLogo := styles.NewStyle().Foreground(t.Primary()).Background(t.Background())
 
 	logo := lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		muted(open),
-		renderRainbow(code),
+		styleLogo.Render(code),
 	)
 	// cwd := app.Info.Path.Cwd
 	// config := app.Info.Path.Config
