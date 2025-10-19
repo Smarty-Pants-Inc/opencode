@@ -92,11 +92,10 @@ export namespace UI {
   }
 
   export function logo(pad?: string) {
-    const useTrueColor = supportsTrueColor()
     const result: string[] = []
     for (const row of LOGO) {
       if (pad) result.push(pad)
-      result.push(renderRainbowLine(row, useTrueColor))
+      result.push(row)
       result.push(EOL)
     }
     return result.join("").trimEnd()
