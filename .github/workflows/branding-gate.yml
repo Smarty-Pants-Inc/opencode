@@ -1,0 +1,39 @@
+name: branding-gate
+
+on:
+  push:
+    branches: [downstream/fixes]
+  pull_request:
+    branches: [downstream/fixes]
+
+permissions:
+  contents: read
+
+jobs:
+  branding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Check default brand and banned strings
+        run: |
+          set -euo pipefail
+          # Required opencode defaults
+          rg -n 'BRAND\s*=\s*process\.env\["BRAND"\]\s*\?\?\s*"opencode"' packages/smartypants/src/cli/ui.ts >/dev/null
+          rg -n 'brand\s*=\s*"opencode"' packages/tui/internal/tui/tui.go >/dev/null
+          rg -n 'brandName\s*=\s*"opencode"' packages/tui/internal/components/status/status.go >/dev/null
+
+          # Must not default to smarty
+          if rg -n '(?i)BRAND.*smarty' packages/smartypants/src/cli/ui.ts; then
+            echo "::error::ui.ts defaults BRAND to smarty"; exit 1; fi
+          if rg -n '(?i)brand\s*=\s*"smarty"' packages/tui/internal/tui/tui.go; then
+            echo "::error::tui.go defaults brand to smarty"; exit 1; fi
+          if rg -n '(?i)brandName\s*=\s*"smarty"' packages/tui/internal/components/status/status.go; then
+            echo "::error::status.go defaults brand to smarty"; exit 1; fi
+
+          # Catch ASCII banners that spell SMARTY
+          if rg -n '(?i)SMARTY' packages/tui/internal/tui/tui.go; then
+            echo "::error::tui.go contains SMARTY banner"; exit 1; fi
