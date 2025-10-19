@@ -61,10 +61,46 @@ type editorComponent struct {
 	currentText            string // Store current text when navigating history
 	pasteCounter           int
 	reverted               bool
+	spinnerActive          bool
+}
+
+func (m *editorComponent) shouldAnimateSpinner() bool {
+	if m == nil || m.app == nil {
+		return false
+	}
+	if m.app.IsBusy() {
+		return true
+	}
+	if m.app.CurrentPermission.ID != "" {
+		// Only animate if the permission is for the active session (or its parent)
+		if m.app.CurrentPermission.SessionID == m.app.Session.ID || (m.app.Session.ParentID != "" && m.app.CurrentPermission.SessionID == m.app.Session.ParentID) {
+			return true
+		}
+	}
+	if m.interruptKeyInDebounce {
+		return true
+	}
+	return false
+}
+
+func (m *editorComponent) ensureSpinnerTick() tea.Cmd {
+	if !m.shouldAnimateSpinner() {
+		m.spinnerActive = false
+		return nil
+	}
+	if m.spinnerActive {
+		return nil
+	}
+	m.spinnerActive = true
+	return m.spinner.Tick
 }
 
 func (m *editorComponent) Init() tea.Cmd {
-	return tea.Batch(m.textarea.Focus(), m.spinner.Tick, tea.EnableReportFocus)
+	cmds := []tea.Cmd{m.textarea.Focus(), tea.EnableReportFocus}
+	if cmd := m.ensureSpinnerTick(); cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m *editorComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -76,6 +112,10 @@ func (m *editorComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width - 4
 		return m, nil
 	case spinner.TickMsg:
+		if !m.shouldAnimateSpinner() {
+			m.spinnerActive = false
+			return m, nil
+		}
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	case tea.KeyPressMsg:
@@ -220,7 +260,12 @@ func (m *editorComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case dialog.ThemeSelectedMsg:
 		m.textarea = updateTextareaStyles(m.textarea)
 		m.spinner = createSpinner()
-		return m, tea.Batch(m.textarea.Focus(), m.spinner.Tick)
+		m.spinnerActive = false
+		cmds := []tea.Cmd{m.textarea.Focus()}
+		if cmd := m.ensureSpinnerTick(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
 	case dialog.CompletionSelectedMsg:
 		switch msg.Item.ProviderID {
 		case "commands":
@@ -333,6 +378,10 @@ func (m *editorComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	m.textarea, cmd = m.textarea.Update(msg)
 	cmds = append(cmds, cmd)
+
+	if cmd := m.ensureSpinnerTick(); cmd != nil {
+		cmds = append(cmds, cmd)
+	}
 
 	return m, tea.Batch(cmds...)
 }
@@ -776,6 +825,7 @@ func NewEditorComponent(app *app.App) EditorComponent {
 		interruptKeyInDebounce: false,
 		historyIndex:           -1,
 		pasteCounter:           0,
+		spinnerActive:          false,
 	}
 
 	return m
