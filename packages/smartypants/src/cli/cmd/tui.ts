@@ -27,7 +27,7 @@ if (typeof OPENCODE_TUI_PATH !== "undefined") {
 }
 
 export const TuiCommand = cmd({
-  command: "$0 [project]",
+  command: "tui [project]",
   describe: `start ${UI.BRAND} tui`,
   builder: (yargs) =>
     yargs
