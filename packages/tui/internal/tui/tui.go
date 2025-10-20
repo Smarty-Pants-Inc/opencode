@@ -989,17 +989,24 @@ func (a Model) home() (string, int, int) {
 	baseStyle := styles.NewStyle().Foreground(t.Text()).Background(t.Background())
 	muted := styles.NewStyle().Foreground(t.TextMuted()).Background(t.Background()).Render
 
-	open := ""
+	open := `
+                    
+█▀▀█ █▀▀█ █▀▀█ █▀▀▄ 
+█░░█ █░░█ █▀▀▀ █░░█ 
+▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀  ▀ `
 
-	code := "OPENCODE"
+	code := `
+             ▄
+█▀▀▀ █▀▀█ █▀▀█ █▀▀█
+█░░░ █░░█ █░░█ █▀▀▀
+▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀`
 
-	// Render logo in primary color (no gradient in fixes)
-	styleLogo := styles.NewStyle().Foreground(t.Primary()).Background(t.Background())
+	base := baseStyle.Render
 
 	logo := lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		muted(open),
-		styleLogo.Render(code),
+		base(code),
 	)
 	// cwd := app.Info.Path.Cwd
 	// config := app.Info.Path.Config
