@@ -1109,18 +1109,21 @@ func (a Model) home() (string, int, int) {
 	if editorLines > 1 {
 		editorYDelta = 2
 	}
-	// Overlay the editor view (with cursor) so caret aligns
-	editorHeight := lipgloss.Height(editorView)
-	if editorY+editorHeight > a.height {
-		difference := (editorY + editorHeight) - a.height
-		editorY -= difference
+	// Overlay editor content only when multi-line to keep cursor baseline correct
+	if editorLines > 1 {
+		content := a.editor.Content()
+		editorHeight := lipgloss.Height(content)
+		if editorY+editorHeight > a.height {
+			difference := (editorY + editorHeight) - a.height
+			editorY -= difference
+		}
+		mainLayout = layout.PlaceOverlay(
+			editorX,
+			editorY,
+			content,
+			mainLayout,
+		)
 	}
-	mainLayout = layout.PlaceOverlay(
-		editorX,
-		editorY,
-		editorView,
-		mainLayout,
-	)
 
 	if a.showCompletionDialog {
 		a.completions.SetWidth(editorWidth)
