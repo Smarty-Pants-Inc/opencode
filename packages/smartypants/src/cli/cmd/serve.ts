@@ -1,6 +1,5 @@
 import { Server } from "../../server/server"
 import { cmd } from "./cmd"
-import { UI } from "../ui"
 
 export const ServeCommand = cmd({
   command: "serve",
