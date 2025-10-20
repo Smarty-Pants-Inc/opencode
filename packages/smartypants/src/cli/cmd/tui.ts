@@ -28,12 +28,12 @@ if (typeof OPENCODE_TUI_PATH !== "undefined") {
 
 export const TuiCommand = cmd({
   command: "$0 [project]",
-  describe: `start ${UI.BRAND} tui`,
+  describe: "start opencode tui",
   builder: (yargs) =>
     yargs
       .positional("project", {
         type: "string",
-        describe: `path to start ${UI.BRAND} in`,
+        describe: "path to start opencode in",
       })
       .option("model", {
         type: "string",
@@ -113,10 +113,14 @@ export const TuiCommand = cmd({
         const tui = Bun.embeddedFiles.find((item) => (item as File).name.includes("tui")) as File
         if (tui && !Installation.isDev()) {
           let binaryName = tui.name
+          // Ensure we do not treat the embedded name as an absolute path
+          binaryName = path.basename(binaryName)
           if (process.platform === "win32" && !binaryName.endsWith(".exe")) {
             binaryName += ".exe"
           }
-          const binary = path.join(Global.Path.cache, "tui", binaryName)
+          const outDir = path.join(Global.Path.cache, "tui")
+          await fs.mkdir(outDir, { recursive: true }).catch(() => {})
+          const binary = path.join(outDir, binaryName)
           const file = Bun.file(binary)
           if (!(await file.exists())) {
             await Bun.write(file, tui, { mode: 0o755 })
@@ -126,8 +130,11 @@ export const TuiCommand = cmd({
         }
         if (!tui || Installation.isDev()) {
           const dir = Bun.fileURLToPath(new URL("../../../../tui/cmd/smartypants", import.meta.url))
-          let binaryName = `./dist/tui${process.platform === "win32" ? ".exe" : ""}`
-          await $`go build -o ${binaryName} ./main.go`.cwd(dir)
+          const exe = process.platform === "win32" ? ".exe" : ""
+          let binaryName = `./dist/tui${exe}`
+          await fs.mkdir(path.join(dir, "dist"), { recursive: true })
+          const envPath = ["/opt/homebrew/bin", "/usr/local/go/bin", process.env["PATH"]].filter(Boolean).join(":")
+          await $`go build -o ${binaryName} ./main.go`.cwd(dir).env({ ...process.env, PATH: envPath })
           cmd = [path.join(dir, binaryName)]
         }
         Log.Default.info("tui", {
@@ -149,7 +156,7 @@ export const TuiCommand = cmd({
             ...process.env,
             CGO_ENABLED: "0",
             OPENCODE_SERVER: server.url.toString(),
-            BRAND: UI.BRAND,
+
           },
           onExit: () => {
             server.stop()

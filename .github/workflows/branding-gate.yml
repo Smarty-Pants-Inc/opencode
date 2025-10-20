@@ -1,0 +1,29 @@
+name: branding-gate
+
+on:
+  push:
+    branches: [downstream/fixes]
+  pull_request:
+    branches: [downstream/fixes]
+
+permissions:
+  contents: read
+
+jobs:
+  branding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Check default brand and banned strings
+        run: |
+          set -euo pipefail
+          # Must not include Smarty branding in fixes
+          if rg -n '(?i)\bsmarty\b' packages/**/*.ts packages/**/*.go packages/**/*.md; then
+            echo "::error::Found 'smarty' branding strings in fixes"; exit 1; fi
+          # Allow the templating language "Smarty" in file-icons/types.ts
+          if rg -n '(?i)\bSmarty\b' packages/app/src/ui/file-icons/types.ts; then
+            echo "Found Smarty in file-icons/types.ts (allowed)"; fi

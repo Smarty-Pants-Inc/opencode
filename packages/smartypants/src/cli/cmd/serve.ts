@@ -1,6 +1,5 @@
 import { Server } from "../../server/server"
 import { cmd } from "./cmd"
-import { UI } from "../ui"
 
 export const ServeCommand = cmd({
   command: "serve",
@@ -18,7 +17,7 @@ export const ServeCommand = cmd({
         describe: "hostname to listen on",
         default: "127.0.0.1",
       }),
-  describe: `starts a headless ${UI.BRAND} server`,
+  describe: "starts a headless opencode server",
   handler: async (args) => {
     const hostname = args.hostname
     const port = args.port

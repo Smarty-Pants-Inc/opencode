@@ -92,7 +92,7 @@ func (m *statusComponent) logo() string {
 
 	brandName := os.Getenv("BRAND")
 	if brandName == "" {
-		brandName = "smarty"
+		brandName = "opencode"
 	}
 	brand := emphasis(strings.ToLower(brandName))
 	version := base(" " + m.app.Version)

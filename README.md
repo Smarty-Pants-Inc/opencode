@@ -109,17 +109,17 @@ The other confusingly named repo has no relation to this one. You can [read the 
 
 **Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
 
-## Smarty‑Pants Fork: Local Wrapper Commands
+## Local Wrapper Commands
 
 This repo configures two local wrapper commands that always run the latest code from our worktrees:
 
 - `opencode-fixes` → `.worktrees/opencode-fixes` (branch: `downstream/fixes`)
-- `smarty` → `.worktrees/opencode-smarty` (branch: `downstream/smarty`)
+
 
 They are installed as wrappers in `scripts/` and exposed on PATH via `~/.local/bin` symlinks:
 
 - `~/.local/bin/opencode-fixes` → `<repo>/scripts/opencode-fixes`
-- `~/.local/bin/smarty` → `<repo>/scripts/smarty`
+
 
 Both wrappers provide:
 - `--where`: print the worktree path, branch, and commit
@@ -130,14 +130,14 @@ Examples
 
 ```bash
 opencode-fixes --where     # verify worktree + branch
-smarty --where
+
 
 opencode-fixes --switch    # align to downstream/fixes (requires clean worktree)
-smarty --switch            # align to downstream/smarty
+
 
 # Non‑interactive single‑shot runs (model latency expected)
 opencode-fixes run "whats 2+2?"
-smarty run "whats 2+2?"
+
 ```
 
 Single source of truth + easy flips
@@ -146,7 +146,7 @@ Single source of truth + easy flips
   - Option A (one‑off): run the CLI directly from a worktree:
     ```bash
     bun --cwd .worktrees/opencode-fixes/packages/opencode ./src/index.ts …
-    bun --cwd .worktrees/opencode-smarty/packages/smartypants ./src/index.ts …
+    
     ```
   - Option B (short‑term): repoint the symlink, then restore:
     ```bash
