@@ -9,7 +9,7 @@ import { $ } from "bun"
 
 export const AttachCommand = cmd({
   command: "attach <server>",
-  describe: `attach to a running ${UI.BRAND} server`,
+  describe: "attach to a running opencode server",
   builder: (yargs) =>
     yargs.positional("server", {
       type: "string",
@@ -49,7 +49,7 @@ export const AttachCommand = cmd({
         ...process.env,
         CGO_ENABLED: "0",
         OPENCODE_SERVER: args.server,
-        BRAND: UI.BRAND,
+
       },
     })
 

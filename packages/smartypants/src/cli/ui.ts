@@ -3,13 +3,13 @@ import { EOL } from "os"
 import { NamedError } from "../util/error"
 
 export namespace UI {
-  const LOGO = [
-    "OPENCODE",
+  const LOGO: [string, string][] = [
+    ["█▀▀█ █▀▀█ █▀▀ █▀▀▄ ", "█▀▀ █▀▀█ █▀▀▄ █▀▀"],
+    ["█░░█ █░░█ █▀▀ █░░█ ", "█░░ █░░█ █░░█ █▀▀"],
+    ["▀▀▀▀ █▀▀▀ ▀▀▀ ▀  ▀ ", "▀▀▀ ▀▀▀▀ ▀▀▀  ▀▀▀"],
   ]
 
   export const CancelledError = NamedError.create("UICancelledError", z.void())
-
-  export const BRAND = process.env["BRAND"] ?? "opencode"
 
   export const Style = {
     TEXT_HIGHLIGHT: "\x1b[96m",
@@ -45,9 +45,17 @@ export namespace UI {
     blank = true
   }
 
-  function supportsTrueColor(): boolean {
-    const c = (process.env["COLORTERM"] || "").toLowerCase()
-    return c.includes("truecolor") || c.includes("24bit")
+  export function logo(pad?: string) {
+    const result: string[] = []
+    for (const row of LOGO) {
+      if (pad) result.push(pad)
+      result.push(Bun.color("gray", "ansi"))
+      result.push(row[0])
+      result.push("\x1b[0m")
+      result.push(row[1])
+      result.push(EOL)
+    }
+    return result.join("").trimEnd()
   }
 
   function rgbEsc(r: number, g: number, b: number): string {

@@ -27,13 +27,13 @@ if (typeof OPENCODE_TUI_PATH !== "undefined") {
 }
 
 export const TuiCommand = cmd({
-  command: "tui [project]",
-  describe: `start ${UI.BRAND} tui`,
+  command: "$0 [project]",
+  describe: "start opencode tui",
   builder: (yargs) =>
     yargs
       .positional("project", {
         type: "string",
-        describe: `path to start ${UI.BRAND} in`,
+        describe: "path to start opencode in",
       })
       .option("model", {
         type: "string",
@@ -156,7 +156,7 @@ export const TuiCommand = cmd({
             ...process.env,
             CGO_ENABLED: "0",
             OPENCODE_SERVER: server.url.toString(),
-            BRAND: UI.BRAND,
+
           },
           onExit: () => {
             server.stop()
