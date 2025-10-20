@@ -1058,15 +1058,7 @@ func (a Model) home() (string, int, int) {
 
 	editorView := a.editor.View()
 	editorWidth := lipgloss.Width(editorView)
-	editorView = lipgloss.PlaceHorizontal(
-		effectiveWidth,
-		lipgloss.Center,
-		editorView,
-		styles.WhitespaceStyle(t.Background()),
-	)
-
-	mainLayout := lipgloss.Place(
-		effectiveWidth,
+undefined		effectiveWidth,
 		a.height,
 		lipgloss.Center,
 		lipgloss.Center,
@@ -1082,19 +1074,19 @@ func (a Model) home() (string, int, int) {
 	editorLines := a.editor.Lines()
 	if editorLines > 1 {
 		editorYDelta = 2
+		content := a.editor.Content()
+		editorHeight := lipgloss.Height(content)
+		if editorY+editorHeight > a.height {
+			difference := (editorY + editorHeight) - a.height
+			editorY -= difference
+		}
+		mainLayout = layout.PlaceOverlay(
+			editorX,
+			editorY,
+			content,
+			mainLayout,
+		)
 	}
-	// Overlay the editor view (with cursor) so caret aligns
-	editorHeight := lipgloss.Height(editorView)
-	if editorY+editorHeight > a.height {
-		difference := (editorY + editorHeight) - a.height
-		editorY -= difference
-	}
-	mainLayout = layout.PlaceOverlay(
-		editorX,
-		editorY,
-		editorView,
-		mainLayout,
-	)
 
 	if a.showCompletionDialog {
 		a.completions.SetWidth(editorWidth)
@@ -1109,7 +1101,7 @@ func (a Model) home() (string, int, int) {
 		)
 	}
 
-	return mainLayout, editorX + 5, editorY + editorYDelta
+	return mainLayout, editorX + 5, editorY + 3
 }
 
 func (a Model) chat() (string, int, int) {
@@ -1127,6 +1119,8 @@ func (a Model) chat() (string, int, int) {
 		editorView,
 		styles.WhitespaceStyle(t.Background()),
 	)
+	// Append editor view to lines for single-line case
+	lines = append(lines, editorView)
 
 	mainLayout := messagesView + "\n" + editorView
 	editorX := max(0, (effectiveWidth-editorWidth)/2)
