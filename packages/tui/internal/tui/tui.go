@@ -1058,7 +1058,16 @@ func (a Model) home() (string, int, int) {
 
 	editorView := a.editor.View()
 	editorWidth := lipgloss.Width(editorView)
-undefined		effectiveWidth,
+	editorView = lipgloss.PlaceHorizontal(
+		effectiveWidth,
+		lipgloss.Center,
+		editorView,
+		styles.WhitespaceStyle(t.Background()),
+	)
+	// Append editor view for single-line baseline
+	lines = append(lines, editorView)
+	mainLayout := lipgloss.Place(
+		effectiveWidth,
 		a.height,
 		lipgloss.Center,
 		lipgloss.Center,
@@ -1068,12 +1077,10 @@ undefined		effectiveWidth,
 
 	editorX := max(0, (effectiveWidth-editorWidth)/2)
 	editorY := (a.height / 2) + (mainHeight / 2) - 3
-	editorYDelta := 3
 
 	// Compute editor lines and set cursor offset
 	editorLines := a.editor.Lines()
 	if editorLines > 1 {
-		editorYDelta = 2
 		content := a.editor.Content()
 		editorHeight := lipgloss.Height(content)
 		if editorY+editorHeight > a.height {
@@ -1119,8 +1126,6 @@ func (a Model) chat() (string, int, int) {
 		editorView,
 		styles.WhitespaceStyle(t.Background()),
 	)
-	// Append editor view to lines for single-line case
-	lines = append(lines, editorView)
 
 	mainLayout := messagesView + "\n" + editorView
 	editorX := max(0, (effectiveWidth-editorWidth)/2)
