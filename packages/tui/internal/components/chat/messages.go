@@ -68,6 +68,11 @@ type messagesComponent struct {
 	blockPrefix   []int // starting line per block (includes leading blank and inter-block blanks)
 	indexDirty    bool
 
+	// Incremental update indexing and caches
+	blockIndexByPartID   map[string]int // partID -> block index
+	blockLineCache       map[int][]string
+	streamingReasoningID string
+
 	// Header cache to avoid O(backlog) scans each frame
 	headerDirty     bool
 	lastHeaderWidth int
@@ -162,7 +167,7 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// PERF: Avoid re-rendering entire backlog on shimmer when history is huge
 		var cmds []tea.Cmd
-		if m.lineCount <= 2000 {
+		if m.viewport.AtBottom() && m.lineCount <= 2000 {
 			cmds = append(cmds, m.renderView())
 		}
 		cmds = append(cmds, tea.Tick(150*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }))
@@ -383,11 +388,13 @@ func (m *messagesComponent) renderView() tea.Cmd {
 	tail := m.tail
 
 	return func() tea.Msg {
-		// Fast path: reuse existing blocks when index not dirty
-		if !m.indexDirty && len(m.blockContents) > 0 {
+		// Fast path: reuse existing blocks when index not dirty and no selection overlay
+		if !m.indexDirty && len(m.blockContents) > 0 && m.selection == nil {
 			header := m.header
 			if m.headerDirty || m.lastHeaderWidth != m.width {
 				header = m.renderHeader()
+				m.headerDirty = false
+				m.lastHeaderWidth = m.width
 			}
 			t := theme.CurrentTheme()
 			_ = t // keep style variable for parity with slow path
@@ -408,10 +415,15 @@ func (m *messagesComponent) renderView() tea.Cmd {
 					out = append(out, "")
 					offset++
 				}
-				// Find starting block (linear scan)
-				i := 0
-				for i < len(m.blockPrefix) && m.blockPrefix[i]+m.blockHeights[i] <= offset {
-					i++
+				// Find starting block (binary search)
+				i := sort.Search(len(m.blockPrefix), func(j int) bool {
+					if j < 0 || j >= len(m.blockPrefix) {
+						return true
+					}
+					return m.blockPrefix[j]+m.blockHeights[j] > offset
+				})
+				if i < 0 {
+					i = 0
 				}
 				cur := offset
 				for i < len(m.blockContents) && cur < end {
@@ -420,7 +432,11 @@ func (m *messagesComponent) renderView() tea.Cmd {
 					if cur > startOfBlock {
 						lineInBlock = cur - startOfBlock
 					}
-					lines := strings.Split(m.blockContents[i], "\n")
+					lines, ok := m.blockLineCache[i]
+					if !ok || lines == nil {
+						lines = strings.Split(m.blockContents[i], "\n")
+						m.blockLineCache[i] = lines
+					}
 					for lineInBlock < len(lines) && cur < end {
 						out = append(out, lines[lineInBlock])
 						lineInBlock++
@@ -459,14 +475,16 @@ func (m *messagesComponent) renderView() tea.Cmd {
 		partCount := 0
 		lineCount := 0
 		messagePositions := make(map[string]int) // Track message ID to line position
+		// Reset incremental index for this rebuild
+		m.blockIndexByPartID = make(map[string]int)
 
 		orphanedToolCalls := make([]opencode.ToolPart, 0)
 
 		width := m.width // always use full width
 
 		// Find the last streaming ReasoningPart to only shimmer that one
-		lastStreamingReasoningID := ""
-		if m.showThinkingBlocks {
+		lastStreamingReasoningID := m.streamingReasoningID
+		if m.showThinkingBlocks && lastStreamingReasoningID == "" {
 			for mi := len(m.app.Messages) - 1; mi >= 0 && lastStreamingReasoningID == ""; mi-- {
 				if _, ok := m.app.Messages[mi].Info.(opencode.AssistantMessage); !ok {
 					continue
@@ -597,7 +615,9 @@ func (m *messagesComponent) renderView() tea.Cmd {
 							partCount++
 							lineCount += lipgloss.Height(content) + 1
 							blocks = append(blocks, content)
+							m.blockIndexByPartID[part.ID] = len(blocks) - 1
 						}
+
 					}
 				}
 
@@ -920,6 +940,20 @@ func (m *messagesComponent) renderView() tea.Cmd {
 				}
 			}
 		}
+
+		// Build virtualization index for fast path on subsequent renders
+		m.blockContents = blocks
+		m.blockHeights = make([]int, len(blocks))
+		m.blockPrefix = make([]int, len(blocks))
+		prefix := 1 // account for leading blank line
+		for i, b := range blocks {
+			m.blockHeights[i] = lipgloss.Height(b)
+			m.blockPrefix[i] = prefix
+			prefix += m.blockHeights[i] + 1 // inter-block blank
+		}
+		m.indexDirty = false
+		m.blockLineCache = make(map[int][]string)
+		m.streamingReasoningID = lastStreamingReasoningID
 
 		final := []string{}
 		clipboard := []string{}
@@ -1440,5 +1474,7 @@ func NewMessagesComponent(app *app.App) MessagesComponent {
 		cache:              NewPartCache(),
 		tail:               true,
 		messagePositions:   make(map[string]int),
+		blockIndexByPartID: make(map[string]int),
+		blockLineCache:     make(map[int][]string),
 	}
 }
