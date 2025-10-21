@@ -61,6 +61,21 @@ type messagesComponent struct {
 	selection          *selection
 	messagePositions   map[string]int // map message ID to line position
 	animating          bool
+
+	// Virtualization index for windowed assembly
+	blockContents []string
+	blockHeights  []int
+	blockPrefix   []int // starting line per block (includes leading blank and inter-block blanks)
+	indexDirty    bool
+
+	// Incremental update indexing and caches
+	blockIndexByPartID   map[string]int // partID -> block index
+	blockLineCache       map[int][]string
+	streamingReasoningID string
+
+	// Header cache to avoid O(backlog) scans each frame
+	headerDirty     bool
+	lastHeaderWidth int
 }
 
 type selection struct {
@@ -103,6 +118,41 @@ type ToggleToolDetailsMsg struct{}
 type ToggleThinkingBlocksMsg struct{}
 type shimmerTickMsg struct{}
 
+func (m *messagesComponent) shouldAnimateShimmer() bool {
+	if m == nil || m.app == nil {
+		return false
+	}
+	// Only consider the latest assistant message for shimmer eligibility
+	for i := len(m.app.Messages) - 1; i >= 0; i-- {
+		msg := m.app.Messages[i]
+		if assistant, ok := msg.Info.(opencode.AssistantMessage); ok {
+			// If the last assistant ended with an abort error, do not animate
+			switch assistant.Error.AsUnion().(type) {
+			case opencode.MessageAbortedError:
+				return false
+			}
+			// If the latest assistant message is still incomplete, animate
+			if assistant.Time.Completed == 0 {
+				return true
+			}
+			// Otherwise, animate only if a tool part on this same message is pending
+			for _, p := range msg.Parts {
+				if tp, ok := p.(opencode.ToolPart); ok {
+					if tp.State.Status == opencode.ToolPartStateStatusPending {
+						return true
+					}
+				}
+			}
+			return false
+		}
+	}
+	// If a permission prompt is in-flight for this session, keep animating
+	if m.app.CurrentPermission.ID != "" && m.app.CurrentPermission.SessionID == m.app.Session.ID {
+		return true
+	}
+	return false
+}
+
 func (m *messagesComponent) Init() tea.Cmd {
 	return tea.Batch(m.viewport.Init())
 }
@@ -111,14 +161,17 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case shimmerTickMsg:
-		if !m.app.HasAnimatingWork() {
+		if !m.shouldAnimateShimmer() {
 			m.animating = false
 			return m, nil
 		}
-		return m, tea.Sequence(
-			m.renderView(),
-			tea.Tick(90*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }),
-		)
+		// PERF: Avoid re-rendering entire backlog on shimmer when history is huge
+		var cmds []tea.Cmd
+		if m.viewport.AtBottom() && m.lineCount <= 2000 {
+			cmds = append(cmds, m.renderView())
+		}
+		cmds = append(cmds, tea.Tick(150*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }))
+		return m, tea.Batch(cmds...)
 	case tea.MouseClickMsg:
 		slog.Info("mouse", "x", msg.X, "y", msg.Y, "offset", m.viewport.YOffset)
 		y := msg.Y + m.viewport.YOffset
@@ -164,6 +217,7 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Clear cache on resize since width affects rendering
 		if m.width != effectiveWidth {
 			m.cache.Clear()
+			m.indexDirty = true
 		}
 		m.width = effectiveWidth
 		m.height = msg.Height - 7
@@ -180,6 +234,7 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case dialog.ThemeSelectedMsg:
 		m.cache.Clear()
+		m.indexDirty = true
 		m.loading = true
 		return m, m.renderView()
 	case ToggleToolDetailsMsg:
@@ -193,6 +248,7 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case app.SessionLoadedMsg:
 		m.tail = true
 		m.loading = true
+		m.indexDirty = true
 		return m, m.renderView()
 	case app.SessionClearedMsg:
 		m.cache.Clear()
@@ -257,11 +313,17 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.renderView())
 		}
 	case opencode.EventListResponseEventPermissionUpdated:
-		m.tail = true
-		return m, m.renderView()
+		if msg.Properties.SessionID == m.app.Session.ID || (m.app.Session.ParentID != "" && msg.Properties.SessionID == m.app.Session.ParentID) {
+			m.tail = true
+			return m, m.renderView()
+		}
+		return m, nil
 	case opencode.EventListResponseEventPermissionReplied:
-		m.tail = true
-		return m, m.renderView()
+		if msg.Properties.SessionID == m.app.Session.ID || (m.app.Session.ParentID != "" && msg.Properties.SessionID == m.app.Session.ParentID) {
+			m.tail = true
+			return m, m.renderView()
+		}
+		return m, nil
 	case renderCompleteMsg:
 		m.partCount = msg.partCount
 		m.lineCount = msg.lineCount
@@ -287,8 +349,8 @@ func (m *messagesComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.renderView())
 		}
 
-		// Start shimmer ticks if any assistant/tool is in-flight
-		if !m.animating && m.app.HasAnimatingWork() {
+		// Start shimmer ticks only for the latest in-flight assistant/tool
+		if !m.animating && m.shouldAnimateShimmer() {
 			m.animating = true
 			cmds = append(cmds, tea.Tick(90*time.Millisecond, func(t time.Time) tea.Msg { return shimmerTickMsg{} }))
 		}
@@ -326,6 +388,84 @@ func (m *messagesComponent) renderView() tea.Cmd {
 	tail := m.tail
 
 	return func() tea.Msg {
+		// Fast path: reuse existing blocks when index not dirty and no selection overlay
+		if !m.indexDirty && len(m.blockContents) > 0 && m.selection == nil {
+			header := m.header
+			if m.headerDirty || m.lastHeaderWidth != m.width {
+				header = m.renderHeader()
+				m.headerDirty = false
+				m.lastHeaderWidth = m.width
+			}
+			t := theme.CurrentTheme()
+			_ = t // keep style variable for parity with slow path
+			// Compute total lines (leading blank + block heights + inter-block blanks)
+			totalLines := 1
+			for _, h := range m.blockHeights {
+				totalLines += h + 1
+			}
+			viewport.SetHeight(m.height - lipgloss.Height(header))
+			viewport.SetVirtual(totalLines, func(offset int, height int) []string {
+				var out []string
+				if offset < 0 {
+					offset = 0
+				}
+				end := offset + height
+				// Leading blank
+				if offset == 0 {
+					out = append(out, "")
+					offset++
+				}
+				// Find starting block (binary search)
+				i := sort.Search(len(m.blockPrefix), func(j int) bool {
+					if j < 0 || j >= len(m.blockPrefix) {
+						return true
+					}
+					return m.blockPrefix[j]+m.blockHeights[j] > offset
+				})
+				if i < 0 {
+					i = 0
+				}
+				cur := offset
+				for i < len(m.blockContents) && cur < end {
+					startOfBlock := m.blockPrefix[i]
+					lineInBlock := 0
+					if cur > startOfBlock {
+						lineInBlock = cur - startOfBlock
+					}
+					lines, ok := m.blockLineCache[i]
+					if !ok || lines == nil {
+						lines = strings.Split(m.blockContents[i], "\n")
+						m.blockLineCache[i] = lines
+					}
+					for lineInBlock < len(lines) && cur < end {
+						out = append(out, lines[lineInBlock])
+						lineInBlock++
+						cur++
+					}
+					if cur < end {
+						out = append(out, "")
+						cur++
+					}
+					i++
+				}
+				for len(out) < height {
+					out = append(out, "")
+				}
+				return out
+			})
+			if tail {
+				viewport.GotoBottom()
+			}
+			return renderCompleteMsg{
+				header:           header,
+				clipboard:        m.clipboard,
+				viewport:         viewport,
+				partCount:        len(m.blockContents),
+				lineCount:        totalLines - 1,
+				messagePositions: m.messagePositions,
+			}
+		}
+
 		header := m.renderHeader()
 		measure := util.Measure("messages.renderView")
 		defer measure()
@@ -335,14 +475,16 @@ func (m *messagesComponent) renderView() tea.Cmd {
 		partCount := 0
 		lineCount := 0
 		messagePositions := make(map[string]int) // Track message ID to line position
+		// Reset incremental index for this rebuild
+		m.blockIndexByPartID = make(map[string]int)
 
 		orphanedToolCalls := make([]opencode.ToolPart, 0)
 
 		width := m.width // always use full width
 
 		// Find the last streaming ReasoningPart to only shimmer that one
-		lastStreamingReasoningID := ""
-		if m.showThinkingBlocks {
+		lastStreamingReasoningID := m.streamingReasoningID
+		if m.showThinkingBlocks && lastStreamingReasoningID == "" {
 			for mi := len(m.app.Messages) - 1; mi >= 0 && lastStreamingReasoningID == ""; mi-- {
 				if _, ok := m.app.Messages[mi].Info.(opencode.AssistantMessage); !ok {
 					continue
@@ -473,7 +615,9 @@ func (m *messagesComponent) renderView() tea.Cmd {
 							partCount++
 							lineCount += lipgloss.Height(content) + 1
 							blocks = append(blocks, content)
+							m.blockIndexByPartID[part.ID] = len(blocks) - 1
 						}
+
 					}
 				}
 
@@ -796,6 +940,20 @@ func (m *messagesComponent) renderView() tea.Cmd {
 				}
 			}
 		}
+
+		// Build virtualization index for fast path on subsequent renders
+		m.blockContents = blocks
+		m.blockHeights = make([]int, len(blocks))
+		m.blockPrefix = make([]int, len(blocks))
+		prefix := 1 // account for leading blank line
+		for i, b := range blocks {
+			m.blockHeights[i] = lipgloss.Height(b)
+			m.blockPrefix[i] = prefix
+			prefix += m.blockHeights[i] + 1 // inter-block blank
+		}
+		m.indexDirty = false
+		m.blockLineCache = make(map[int][]string)
+		m.streamingReasoningID = lastStreamingReasoningID
 
 		final := []string{}
 		clipboard := []string{}
@@ -1316,5 +1474,7 @@ func NewMessagesComponent(app *app.App) MessagesComponent {
 		cache:              NewPartCache(),
 		tail:               true,
 		messagePositions:   make(map[string]int),
+		blockIndexByPartID: make(map[string]int),
+		blockLineCache:     make(map[int][]string),
 	}
 }
