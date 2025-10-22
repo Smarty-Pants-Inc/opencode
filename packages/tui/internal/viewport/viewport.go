@@ -116,7 +116,8 @@ type Model struct {
 	lines            []string
 	longestLineWidth int
 
-	// Virtual rendering support
+	// Virtualization provider; when set, Model ignores m.lines and fetches
+	// visible window via the provider for the given offset/height.
 	virtual      bool
 	virtualTotal int
 	virtualFetch func(offset int, height int) []string
@@ -247,6 +248,9 @@ func (m Model) HorizontalScrollPercent() float64 {
 func (m *Model) SetContent(s string) {
 	s = strings.ReplaceAll(s, "\r\n", "\n") // normalize line endings
 	m.SetContentLines(strings.Split(s, "\n"))
+	m.virtual = false
+	m.virtualTotal = 0
+	m.virtualFetch = nil
 	m.memo.Invalidate()
 }
 
@@ -278,6 +282,10 @@ func (m *Model) SetContentLines(lines []string) {
 	}
 	m.longestLineWidth = maxLineWidth(m.lines)
 	m.ClearHighlights()
+	// Switching to content disables virtualization
+	m.virtual = false
+	m.virtualTotal = 0
+	m.virtualFetch = nil
 
 	if m.YOffset > m.maxYOffset() {
 		m.GotoBottom()
@@ -339,6 +347,9 @@ func (m Model) lineToIndex(y int) int {
 // lineCount taking soft wrapping into account, return the total viewable line
 // count (real lines + soft wrapped line).
 func (m Model) lineCount() int {
+	if m.virtual {
+		return m.virtualTotal
+	}
 	total, _ := m.calculateLine(0)
 	return total
 }
@@ -375,18 +386,15 @@ func (m Model) visibleLines() (lines []string) {
 	maxHeight := m.maxHeight()
 	maxWidth := m.maxWidth()
 
-	// Virtual mode: fetch only visible window
-	if m.virtual {
-		var vlines []string
-		if m.virtualFetch != nil {
-			vlines = m.virtualFetch(m.YOffset, maxHeight)
+	// Virtual fast-path: fetch only the requested window
+	if m.virtual && m.virtualFetch != nil {
+		start := clamp(m.YOffset, 0, max(0, m.lineCount()-maxHeight))
+		lines = m.virtualFetch(start, maxHeight)
+		for m.FillHeight && len(lines) < maxHeight {
+			lines = append(lines, "")
 		}
-		for m.FillHeight && len(vlines) < maxHeight {
-			vlines = append(vlines, "")
-		}
-		return m.setupGutter(vlines)
+		return m.setupGutter(lines)
 	}
-
 	if m.lineCount() > 0 {
 
 		pos := m.lineToIndex(m.YOffset)

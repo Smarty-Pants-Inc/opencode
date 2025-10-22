@@ -5,6 +5,7 @@ import { Global } from "../global"
 import { lazy } from "../util/lazy"
 import { Lock } from "../util/lock"
 import { $ } from "bun"
+import { createHash } from "crypto"
 
 export namespace Storage {
   const log = Log.create({ service: "storage" })
@@ -105,6 +106,155 @@ export namespace Storage {
             }
           }
         }
+      }
+    },
+    // Consolidate sessions from any existing project IDs pointing to the same worktree into the hashed id
+    async (dir) => {
+      try {
+        const projectsDir = path.join(dir, "project")
+        // Build map: worktree -> set of projectIDs
+        const map = new Map<string, Set<string>>()
+        for await (const p of new Bun.Glob("*.json").scan({ cwd: projectsDir, absolute: true })) {
+          try {
+            const j = await Bun.file(p).json()
+            if (!j?.worktree || !j?.id) continue
+            const set = map.get(j.worktree) ?? new Set<string>()
+            set.add(j.id)
+            map.set(j.worktree, set)
+          } catch {}
+        }
+        for (const [worktree, ids] of map) {
+          const stable = createHash("sha1").update(worktree).digest("hex")
+          // Ensure stable project record exists
+          const stablePath = path.join(projectsDir, stable + ".json")
+          try {
+            await fs.access(stablePath)
+          } catch {
+            await Bun.write(
+              stablePath,
+              JSON.stringify({ id: stable, vcs: "git", worktree, time: { created: Date.now() } }),
+            )
+          }
+          // Merge sessions from all ids into stable
+          for (const id of ids) {
+            if (id === stable) continue
+            const srcDir = path.join(dir, "session", id)
+            const dstDir = path.join(dir, "session", stable)
+            try {
+              await fs.mkdir(dstDir, { recursive: true })
+            } catch {}
+            for await (const f of new Bun.Glob("*.json").scan({ cwd: srcDir, absolute: true })) {
+              const dest = path.join(dstDir, path.basename(f))
+              try {
+                await fs.access(dest)
+              } catch {
+                try {
+                  await fs.copyFile(f, dest)
+                } catch {}
+              }
+            }
+          }
+        }
+      } catch (e) {
+        log.error("failed consolidation migration", { error: e })
+      }
+    },
+    // Fallback: if we have sessions under session/<legacyID> but no project mapping, infer worktree from session info (prefer superproject)
+    async (dir) => {
+      try {
+        const sessionsRoot = path.join(dir, "session")
+        for await (const proj of new Bun.Glob("*").scan({ cwd: sessionsRoot, onlyFiles: false })) {
+          const legacyID = proj
+          if (!legacyID || legacyID === "global") continue
+          const srcDir = path.join(sessionsRoot, legacyID)
+          let inferredWorktree = ""
+          for await (const sf of new Bun.Glob("*.json").scan({ cwd: srcDir, absolute: true })) {
+            try {
+              const session = await Bun.file(sf).json()
+              const directory = session?.directory as string | undefined
+              if (!directory) continue
+              const supertree = await $`git rev-parse --show-superproject-working-tree`.quiet().nothrow().cwd(directory).text().then((x) => x.trim()).catch(() => "")
+              if (supertree) {
+                inferredWorktree = supertree
+                break
+              }
+              const wt = await $`git rev-parse --path-format=absolute --show-toplevel`.quiet().nothrow().cwd(directory).text().then((x) => x.trim()).catch(() => "")
+              if (wt) {
+                inferredWorktree = wt
+                break
+              }
+            } catch {}
+          }
+          if (!inferredWorktree) continue
+          const stable = createHash("sha1").update(inferredWorktree).digest("hex")
+          const projectsDir = path.join(dir, "project")
+          try {
+            await fs.access(path.join(projectsDir, stable + ".json"))
+          } catch {
+            await fs.mkdir(projectsDir, { recursive: true }).catch(() => {})
+            await Bun.write(
+              path.join(projectsDir, stable + ".json"),
+              JSON.stringify({ id: stable, vcs: "git", worktree: inferredWorktree, time: { created: Date.now() } }),
+            )
+          }
+          const dstDir = path.join(sessionsRoot, stable)
+          await fs.mkdir(dstDir, { recursive: true }).catch(() => {})
+          for await (const f of new Bun.Glob("*.json").scan({ cwd: srcDir, absolute: true })) {
+            const dest = path.join(dstDir, path.basename(f))
+            try {
+              await fs.access(dest)
+            } catch {
+              try {
+                await fs.copyFile(f, dest)
+              } catch {}
+            }
+          }
+        }
+      } catch (e) {
+        log.error("failed fallback session migration", { error: e })
+      }
+    },
+    // Consolidate submodule project IDs into superproject project ID
+    async (dir) => {
+      try {
+        const projectsDir = path.join(dir, "project")
+        for await (const p of new Bun.Glob("*.json").scan({ cwd: projectsDir, absolute: true })) {
+          try {
+            const j = await Bun.file(p).json()
+            const worktree = j?.worktree as string | undefined
+            const id = j?.id as string | undefined
+            if (!worktree || !id) continue
+            const supertree = await $`git rev-parse --show-superproject-working-tree`.quiet().nothrow().cwd(worktree).text().then((x) => x.trim()).catch(() => "")
+            if (!supertree) continue
+            const superID = createHash("sha1").update(supertree).digest("hex")
+            // Ensure superproject record exists
+            const superPath = path.join(projectsDir, superID + ".json")
+            try {
+              await fs.access(superPath)
+            } catch {
+              await Bun.write(
+                superPath,
+                JSON.stringify({ id: superID, vcs: "git", worktree: supertree, time: { created: Date.now() } }),
+              )
+            }
+            // Copy sessions from submodule project ID to superproject project ID (id -> superID)
+            const srcDir = path.join(dir, "session", id)
+            const dstDir = path.join(dir, "session", superID)
+            await fs.mkdir(dstDir, { recursive: true }).catch(() => {})
+            for await (const f of new Bun.Glob("*.json").scan({ cwd: srcDir, absolute: true })) {
+              const dest = path.join(dstDir, path.basename(f))
+              try {
+                await fs.access(dest)
+              } catch {
+                try {
+                  await fs.copyFile(f, dest)
+                } catch {}
+              }
+            }
+          } catch {}
+        }
+      } catch (e) {
+        log.error("failed superproject consolidation migration", { error: e })
       }
     },
   ]
