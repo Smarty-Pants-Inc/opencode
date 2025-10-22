@@ -990,16 +990,12 @@ func (a Model) home() (string, int, int) {
 	muted := styles.NewStyle().Foreground(t.TextMuted()).Background(t.Background()).Render
 
 	open := `
-                    
-█▀▀█ █▀▀█ █▀▀█ █▀▀▄ 
-█░░█ █░░█ █▀▀▀ █░░█ 
-▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀  ▀ `
+					
+	█▀▀█ █▀▀█ █▀▀█ █▀▀▄ 
+	█░░█ █░░█ █▀▀▀ █░░█ 
+	▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀  ▀ `
 
-	code := `
-             ▄
-█▀▀▀ █▀▀█ █▀▀█ █▀▀█
-█░░░ █░░█ █░░█ █▀▀▀
-▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀`
+	code := "OPENCODE"
 
 	base := baseStyle.Render
 
@@ -1108,7 +1104,7 @@ func (a Model) home() (string, int, int) {
 		)
 	}
 
-	return mainLayout, editorX + 5, editorY + 3
+	return mainLayout, editorX + 5, editorY + 2
 }
 
 func (a Model) chat() (string, int, int) {
