@@ -83,13 +83,17 @@ export const TuiCommand = cmd({
         const sessionID = await (async () => {
           if (args.continue) {
             const it = Session.list()
+            let latest: { id: string; updated: number } | undefined
             try {
               for await (const s of it) {
                 if (s.parentID === undefined) {
-                  return s.id
+                  const updated = s.time?.updated ?? 0
+                  if (!latest || updated > latest.updated) {
+                    latest = { id: s.id, updated }
+                  }
                 }
               }
-              return
+              return latest?.id
             } finally {
               await it.return()
             }

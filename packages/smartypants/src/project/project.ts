@@ -4,6 +4,7 @@ import path from "path"
 import { $ } from "bun"
 import { Storage } from "../storage/storage"
 import { Log } from "../util/log"
+import { createHash } from "crypto"
 
 export namespace Project {
   const log = Log.create({ service: "project" })
@@ -27,56 +28,54 @@ export namespace Project {
     const matches = Filesystem.up({ targets: [".git"], start: directory })
     const git = await matches.next().then((x) => x.value)
     await matches.return()
+
+    // No git repo: use global bucket
     if (!git) {
       const project: Info = {
         id: "global",
         worktree: "/",
-        time: {
-          created: Date.now(),
-        },
+        time: { created: Date.now() },
       }
       await Storage.write<Info>(["project", "global"], project)
       return project
     }
-    let worktree = path.dirname(git)
-    const [id] = await $`git rev-list --max-parents=0 --all`
+
+    // Resolve canonical toplevel worktree path
+    let worktree = await $`git rev-parse --path-format=absolute --show-toplevel`
       .quiet()
       .nothrow()
-      .cwd(worktree)
+      .cwd(path.dirname(git))
       .text()
-      .then((x) =>
-        x
-          .split("\n")
-          .filter(Boolean)
-          .map((x) => x.trim())
-          .toSorted(),
-      )
-    if (!id) {
-      const project: Info = {
-        id: "global",
-        worktree: "/",
-        time: {
-          created: Date.now(),
-        },
-      }
-      await Storage.write<Info>(["project", "global"], project)
-      return project
-    }
-    worktree = await $`git rev-parse --path-format=absolute --show-toplevel`
+      .then((x) => x.trim())
+
+    // Prefer superproject working tree if this is a submodule
+    const superproject = await $`git rev-parse --show-superproject-working-tree`
       .quiet()
       .nothrow()
       .cwd(worktree)
       .text()
       .then((x) => x.trim())
-    const project: Info = {
-      id,
-      worktree,
-      vcs: "git",
-      time: {
-        created: Date.now(),
-      },
+      .catch(() => "")
+    if (superproject) {
+      worktree = superproject
     }
-    await Storage.write<Info>(["project", id], project)
+
+    // Compute stable project id from the anchor worktree path
+    const stableID = createHash("sha1").update(worktree).digest("hex")
+
+    // Ensure a project record exists for the stable id
+    let project: Info
+    try {
+      project = await Storage.read<Info>(["project", stableID])
+    } catch {
+      project = {
+        id: stableID,
+        worktree,
+        vcs: "git",
+        time: { created: Date.now() },
+      }
+      await Storage.write<Info>(["project", stableID], project)
+    }
     return project
   }
 

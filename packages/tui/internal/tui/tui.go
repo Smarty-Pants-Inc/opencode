@@ -985,10 +985,10 @@ func (a Model) Cleanup() {
 }
 
 func (a Model) home() (string, int, int) {
-	t := theme.CurrentTheme()
+	b := theme.CurrentTheme()
 	effectiveWidth := a.width - 4
-	baseStyle := styles.NewStyle().Foreground(t.Text()).Background(t.Background())
-	muted := styles.NewStyle().Foreground(t.TextMuted()).Background(t.Background()).Render
+	baseStyle := styles.NewStyle().Foreground(b.Text()).Background(b.Background())
+	muted := styles.NewStyle().Foreground(b.TextMuted()).Background(b.Background()).Render
 
 	open := ""
 
@@ -1014,18 +1014,19 @@ func (a Model) home() (string, int, int) {
 				out = append(out, "")
 				continue
 			}
-			var b strings.Builder
+			var sb strings.Builder
 			for x, r := range runes {
 				if r == ' ' {
-					b.WriteRune(' ')
+					sb.WriteRune(' ')
 					continue
 				}
 				idx := int(float64(x) / float64(max(w-1, 1)) * float64(len(colors)-1))
-				st := styles.NewStyle().Foreground(compat.AdaptiveColor{Dark: lipgloss.Color(colors[idx]), Light: lipgloss.Color(colors[idx])}).Background(t.Background())
-				b.WriteString(st.Render(string(r)))
+				st := styles.NewStyle().Foreground(compat.AdaptiveColor{Dark: lipgloss.Color(colors[idx]), Light: lipgloss.Color(colors[idx])}).Background(b.Background())
+				sb.WriteString(st.Render(string(r)))
 			}
-			out = append(out, b.String())
+			out = append(out, sb.String())
 		}
+
 		return strings.Join(out, "\n")
 	}
 
@@ -1038,8 +1039,8 @@ func (a Model) home() (string, int, int) {
 	// config := app.Info.Path.Config
 
 	versionStyle := styles.NewStyle().
-		Foreground(t.TextMuted()).
-		Background(t.Background()).
+		Foreground(b.TextMuted()).
+		Background(b.Background()).
 		Width(lipgloss.Width(logo)).
 		Align(lipgloss.Right)
 	version := versionStyle.Render(a.app.Version)
@@ -1049,7 +1050,7 @@ func (a Model) home() (string, int, int) {
 		effectiveWidth,
 		lipgloss.Center,
 		logoAndVersion,
-		styles.WhitespaceStyle(t.Background()),
+		styles.WhitespaceStyle(b.Background()),
 	)
 
 	// Use limit of 4 for vscode, 6 for others
@@ -1061,7 +1062,7 @@ func (a Model) home() (string, int, int) {
 	showVscode := util.IsVSCode()
 	commandsView := cmdcomp.New(
 		a.app,
-		cmdcomp.WithBackground(t.Background()),
+		cmdcomp.WithBackground(b.Background()),
 		cmdcomp.WithLimit(limit),
 		cmdcomp.WithVscode(showVscode),
 	)
@@ -1069,7 +1070,7 @@ func (a Model) home() (string, int, int) {
 		effectiveWidth,
 		lipgloss.Center,
 		commandsView.View(),
-		styles.WhitespaceStyle(t.Background()),
+		styles.WhitespaceStyle(b.Background()),
 	)
 
 	lines := []string{}
@@ -1088,8 +1089,11 @@ func (a Model) home() (string, int, int) {
 		effectiveWidth,
 		lipgloss.Center,
 		editorView,
-		styles.WhitespaceStyle(t.Background()),
+		styles.WhitespaceStyle(b.Background()),
 	)
+	lines = append(lines, editorView)
+
+	editorLines := a.editor.Lines()
 
 	mainLayout := lipgloss.Place(
 		effectiveWidth,
@@ -1097,22 +1101,18 @@ func (a Model) home() (string, int, int) {
 		lipgloss.Center,
 		lipgloss.Center,
 		baseStyle.Render(strings.Join(lines, "\n")),
-		styles.WhitespaceStyle(t.Background()),
+		styles.WhitespaceStyle(b.Background()),
 	)
 
 	editorX := max(0, (effectiveWidth-editorWidth)/2)
 	editorY := (a.height / 2) + (mainHeight / 2) - 3
 	editorYDelta := 3
 
-	// Compute editor lines and set cursor offset
-	editorLines := a.editor.Lines()
 	if editorLines > 1 {
 		editorYDelta = 2
-	}
-	// Overlay editor content only when multi-line to keep cursor baseline correct
-	if editorLines > 1 {
 		content := a.editor.Content()
 		editorHeight := lipgloss.Height(content)
+
 		if editorY+editorHeight > a.height {
 			difference := (editorY + editorHeight) - a.height
 			editorY -= difference
@@ -1132,7 +1132,7 @@ func (a Model) home() (string, int, int) {
 
 		mainLayout = layout.PlaceOverlay(
 			editorX,
-			editorY-overlayHeight+1,
+			editorY-overlayHeight+2,
 			overlay,
 			mainLayout,
 		)
@@ -1143,7 +1143,7 @@ func (a Model) home() (string, int, int) {
 
 func (a Model) chat() (string, int, int) {
 	effectiveWidth := a.width - 4
-	t := theme.CurrentTheme()
+	b := theme.CurrentTheme()
 	editorView := a.editor.View()
 	lines := a.editor.Lines()
 	messagesView := a.messages.View()
@@ -1154,7 +1154,7 @@ func (a Model) chat() (string, int, int) {
 		effectiveWidth,
 		lipgloss.Center,
 		editorView,
-		styles.WhitespaceStyle(t.Background()),
+		styles.WhitespaceStyle(b.Background()),
 	)
 
 	mainLayout := messagesView + "\n" + editorView
