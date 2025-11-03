@@ -154,7 +154,11 @@ export function tui(input: {
         targetFps: 60,
         gatherStats: false,
         exitOnCtrlC: false,
-        useKittyKeyboard: true,
+        // Reduce trackpad scroll sensitivity in some terminals by disabling Kitty keyboard protocol.
+        // Enable by default; set OPENCODE_TUI_KITTY=0 to disable (or auto-disable for Zed terminal).
+        useKittyKeyboard:
+          (process.env["OPENCODE_TUI_KITTY"] ?? "1") !== "0" &&
+          !(process.env["TERM_PROGRAM"]?.toLowerCase().includes("zed") ?? false),
       },
     )
   })
