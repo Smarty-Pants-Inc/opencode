@@ -1,12 +1,13 @@
 name: Guidelines Check
 
 on:
-  # Disabled - uncomment to re-enable
-  # pull_request_target:
-  #   types: [opened, synchronize]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 jobs:
   check-guidelines:
+    if: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,3 +52,15 @@ jobs:
           ```
 
           Only create comments for actual violations. If the code follows all guidelines, don't run any gh commands."
+
+  noop:
+    if: ${{ secrets.ANTHROPIC_API_KEY == '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Skip guidelines check (no secret)
+        run: |
+          echo "Guidelines check skipped: ANTHROPIC_API_KEY is not set."
+          echo "Set the secret in repository settings to enable full check, or run manually via workflow_dispatch."
+
