@@ -76,4 +76,38 @@ The other confusingly named repo has no relation to this one. You can [read the 
 
 ---
 
+### Smarty Fork Policy (Branding Overlay)
+
+This fork tracks upstream and applies only our branding on top.
+
+- Default branch: `downstream/smarty` = `upstream/dev` + branding overlay
+- Upstream remote: `upstream` → https://github.com/sst/opencode
+- We do not maintain a separate fixes branch; fixes should be upstreamed
+
+Common tasks:
+
+- Rebase branding on latest upstream and push:
+  - `scripts/opencode-branding-patch.sh --apply --push`
+- Generate branding-only patch (for inspection):
+  - `scripts/opencode-branding-patch.sh`
+  - Output: `/tmp/branding-<timestamp>.patch` (not committed)
+- Remove any accidentally committed large patches:
+  - `scripts/opencode-branding-patch.sh --drop-large-patches`
+
+What the branding patch includes:
+- `packages/identity/**`
+- `sdks/vscode/images/**`
+- `packages/console/app/src/asset/**`
+- `packages/opencode/src/cli/cmd/tui/context/theme/opencode.json` (TS TUI)
+- `packages/tui/internal/theme/themes/opencode.json` (legacy Go TUI)
+- `packages/web/public/**`
+- `packages/app/src/assets/favicon.svg`
+- `packages/app/src/ui/logo.tsx`
+
+Notes:
+- The script resets the branch to `upstream/dev` then reapplies only branding files, keeping history small and reproducible.
+- CI workflow `.github/workflows/guidelines-check.yml` is kept as a small, separate commit on `downstream/smarty`.
+
+---
+
 **Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
