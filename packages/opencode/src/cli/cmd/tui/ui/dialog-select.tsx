@@ -1,9 +1,17 @@
-import { InputRenderable, RGBA, ScrollBoxRenderable, TextAttributes } from "@opentui/core"
+import {
+  InputRenderable,
+  RGBA,
+  ScrollBoxRenderable,
+  TextAttributes,
+  LinearScrollAccel,
+  MacOSScrollAccel,
+} from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { entries, filter, flatMap, groupBy, pipe, take } from "remeda"
 import { batch, createEffect, createMemo, For, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
+import { useSync } from "@tui/context/sync"
 import * as fuzzysort from "fuzzysort"
 import { isDeepEqual } from "remeda"
 import { useDialog, type DialogContext } from "@tui/ui/dialog"
@@ -46,6 +54,7 @@ export type DialogSelectRef<T> = {
 export function DialogSelect<T>(props: DialogSelectProps<T>) {
   const dialog = useDialog()
   const { theme } = useTheme()
+  const sync = useSync()
   const [store, setStore] = createStore({
     selected: 0,
     filter: "",
@@ -148,6 +157,27 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   })
 
   let scroll: ScrollBoxRenderable
+  const scrollAcceleration = createMemo(() => {
+    const t = sync.data.config.tui ?? {}
+    const mode = t["scroll_wheel_acceleration"] as "linear" | "mac" | undefined
+    const scale = (t["scroll_wheel_scale"] as number | undefined) ?? 1
+    const maxMul = t["scroll_wheel_max_multiplier"] as number | undefined
+    const base =
+      mode === "linear"
+        ? new LinearScrollAccel()
+        : new MacOSScrollAccel(maxMul ? { maxMultiplier: maxMul } : undefined)
+    if (scale === 1) return base as any
+    const b = base as any
+    return {
+      tick(now?: number) {
+        const v = typeof b.tick === "function" ? b.tick(now) : 1
+        return v * scale
+      },
+      reset() {
+        if (typeof b.reset === "function") b.reset()
+      },
+    } as any
+  })
   const ref: DialogSelectRef<T> = {
     get filter() {
       return store.filter
@@ -193,6 +223,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         scrollbarOptions={{ visible: false }}
         ref={(r: ScrollBoxRenderable) => (scroll = r)}
         maxHeight={height()}
+        scrollAcceleration={scrollAcceleration()}
       >
         <For each={grouped()}>
           {([category, options], index) => (

@@ -16,7 +16,13 @@ import { useRoute, useRouteData } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
 import { SplitBorder } from "@tui/component/border"
 import { useTheme } from "@tui/context/theme"
-import { BoxRenderable, ScrollBoxRenderable, addDefaultParsers } from "@opentui/core"
+import {
+  BoxRenderable,
+  ScrollBoxRenderable,
+  addDefaultParsers,
+  LinearScrollAccel,
+  MacOSScrollAccel,
+} from "@opentui/core"
 import { Prompt, type PromptRef } from "@tui/component/prompt"
 import type {
   AssistantMessage,
@@ -111,6 +117,28 @@ export function Session() {
   let scroll: ScrollBoxRenderable
   let prompt: PromptRef
   const keybind = useKeybind()
+
+  const scrollAcceleration = createMemo(() => {
+    const t = sync.data.config.tui ?? {}
+    const mode = t["scroll_wheel_acceleration"] as "linear" | "mac" | undefined
+    const scale = (t["scroll_wheel_scale"] as number | undefined) ?? 1
+    const maxMul = t["scroll_wheel_max_multiplier"] as number | undefined
+    const base =
+      mode === "linear"
+        ? new LinearScrollAccel()
+        : new MacOSScrollAccel(maxMul ? { maxMultiplier: maxMul } : undefined)
+    if (scale === 1) return base as any
+    const b = base as any
+    return {
+      tick(now?: number) {
+        const v = typeof b.tick === "function" ? b.tick(now) : 1
+        return v * scale
+      },
+      reset() {
+        if (typeof b.reset === "function") b.reset()
+      },
+    } as any
+  })
 
   useKeyboard((evt) => {
     if (dialog.stack.length > 0) return
@@ -529,6 +557,7 @@ export function Session() {
               stickyScroll={true}
               stickyStart="bottom"
               flexGrow={1}
+              scrollAcceleration={scrollAcceleration()}
             >
               <For each={messages()}>
                 {(message, index) => (

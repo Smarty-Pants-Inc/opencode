@@ -492,6 +492,20 @@ export namespace Config {
 
   export const TUI = z.object({
     scroll_speed: z.number().min(1).optional().default(2).describe("TUI scroll speed"),
+    scroll_wheel_acceleration: z
+      .enum(["linear", "mac"]) // linear disables acceleration; mac uses macOS-style acceleration
+      .optional()
+      .describe("Mouse wheel acceleration mode for TUI scrollboxes"),
+    scroll_wheel_scale: z
+      .number()
+      .positive()
+      .optional()
+      .describe("Scale factor applied to wheel scrolling (e.g. 0.5 to slow down)"),
+    scroll_wheel_max_multiplier: z
+      .number()
+      .positive()
+      .optional()
+      .describe("Cap for mac acceleration multiplier (lower = less sensitive)"),
   })
 
   export const Layout = z.enum(["auto", "stretch"]).meta({
