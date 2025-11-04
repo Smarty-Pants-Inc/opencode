@@ -119,7 +119,7 @@ export function Session() {
   const keybind = useKeybind()
 
   const scrollAcceleration = createMemo(() => {
-    const t = sync.data.config.tui ?? {}
+    const t = (sync.data.config.tui ?? {}) as any
     const mode = t["scroll_wheel_acceleration"] as "linear" | "mac" | undefined
     const scale = (t["scroll_wheel_scale"] as number | undefined) ?? 1
     const maxMul = t["scroll_wheel_max_multiplier"] as number | undefined
